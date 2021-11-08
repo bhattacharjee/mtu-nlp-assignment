@@ -1,0 +1,2 @@
+this is a smiley: 🙊 : end of smiley
+this line has no smiley
