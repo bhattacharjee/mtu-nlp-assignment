@@ -1,0 +1,5741 @@
+cscope 15 /Users/phantom/dev/mtu-nlp-assignment/assignment2/robustqa -c 0000043675
+	@./convert_to_squad.py
+
+1 import 
+	~argparse
+
+2 import 
+	~json
+
+3 import 
+	~logging
+
+4 import 
+	~os
+
+5 import 
+	~re
+
+6 import 
+	~gzip
+
+7 import 
+	~string
+
+9 from 
+	~fuzzywuzzy
+ import 
+fuzz
+
+10 from 
+	~tqdm
+ import 
+tqdm
+
+12 
+logger
+ = 
+logging
+ . 
+getLogger
+ ( 
+__name__
+ )
+
+15 def 
+	$main
+ ( 
+input_path
+ , 
+output_path
+ , 
+verbose
+ ) :
+
+16 
+squad_data
+ = { "data" : [ ] , "version" : "1.1" }
+
+18 
+logger
+ . 
+info
+ ( f"Loading data from {input_path}" )
+
+19 
+num_questions
+ = 0.0
+
+21 if 
+os
+ . 
+path
+ . 
+isfile
+ ( 
+input_path
+ ) :
+
+22 
+squad_data
+ [ "data" ] . 
+extend
+ ( 
+read_file
+ ( 
+input_path
+ , 
+verbose
+ ) )
+
+25 for 
+example
+ in 
+squad_data
+ [ "data" ] :
+
+26 for 
+paragraph
+ in 
+example
+ [ "paragraphs" ] :
+
+27 for 
+question_answer
+ in 
+paragraph
+ [ "qas" ] :
+
+28 
+num_questions
+ += 1
+
+31 assert "data" in 
+squad_data
+ . 
+keys
+ ( )
+
+32 assert "version" in 
+squad_data
+ . 
+keys
+ ( )
+
+33 for 
+article
+ in 
+squad_data
+ [ "data" ] :
+
+34 for 
+paragraph
+ in 
+article
+ [ "paragraphs" ] :
+
+35 
+context
+ = 
+paragraph
+ [ "context" ]
+
+36 for 
+qas
+ in 
+paragraph
+ [ "qas" ] :
+
+37 assert 
+qas
+ [ "question" ]
+
+38 for 
+answer
+ in 
+qas
+ [ "answers" ] :
+
+40 
+answer
+ [ "text" ]
+
+41 == 
+context
+ [
+
+42 
+answer
+ [ "answer_start" ] : 
+answer
+ [ "answer_start" ] + 
+len
+ ( 
+answer
+ [ "text" ] )
+
+46 
+logger
+ . 
+info
+ ( f"Writing output to {output_path}" )
+
+47 
+logger
+ . 
+info
+ ( f"Number of questions: {num_questions}" )
+
+48 with 
+open
+ ( 
+output_path
+ , "w" ) as 
+output_file
+ :
+
+49 
+json
+ . 
+dump
+ ( 
+squad_data
+ , 
+output_file
+ ) 
+	}
+
+52 def 
+	$read_file
+ ( 
+input_path
+ , 
+verbose
+ ) :
+
+53 
+instances
+ = [ ]
+
+54 with 
+gzip
+ . 
+open
+ ( 
+input_path
+ , 'rb' ) as 
+input_file
+ :
+
+55 for 
+line
+ in 
+tqdm
+ ( 
+input_file
+ , 
+leave
+ = False ) :
+
+56 
+mrqa_instance
+ = 
+json
+ . 
+loads
+ ( 
+line
+ )
+
+57 if "header" in 
+mrqa_instance
+ :
+
+59 
+passage
+ = 
+mrqa_instance
+ [ "context" ]
+
+60 
+passage
+ = 
+passage
+ . 
+replace
+ ( "\xa0" , " " ) . 
+replace
+ ( "\u2019" , "'" )
+
+61 
+questions_detected_answers
+ = [
+
+62 
+qa
+ . 
+get
+ ( "detected_answers" , [ ] ) for 
+qa
+ in 
+mrqa_instance
+ [ "qas" ]
+
+64 
+questions_allowed_answers
+ = [ 
+qa
+ . 
+get
+ ( "answers" , [ ] ) for 
+qa
+ in 
+mrqa_instance
+ [ "qas" ] ]
+
+65 if not 
+all
+ ( [ 
+len
+ ( 
+x
+ ) != 0 for 
+x
+ in 
+questions_detected_answers
+ ] ) :
+
+66 raise 
+ValueError
+ ( f"Instance has question with no detected answers: {mrqa_instance}" )
+
+67 
+questions_squad_format_answers
+ = [ ]
+
+68 for 
+question_allowed_answers
+ , 
+question_detected_answers
+ in 
+zip
+ (
+
+69 
+questions_allowed_answers
+ , 
+questions_detected_answers
+
+71 
+question_squad_format_answers
+ = [ ]
+
+72 for 
+detected_answer
+ in 
+question_detected_answers
+ :
+
+76 if 
+len
+ ( 
+detected_answer
+ [ "char_spans" ] ) == 1 :
+
+77 
+start_char_span
+ = 
+detected_answer
+ [ "char_spans" ] [ 0 ] [ 0 ]
+
+78 
+end_char_span
+ = 
+detected_answer
+ [ "char_spans" ] [ 0 ] [ 1 ] + 1
+
+79 
+question_squad_format_answers
+ . 
+append
+ (
+
+81 : 
+start_char_span
+ , "text"
+
+82 : 
+passage
+ [ 
+start_char_span
+ : 
+end_char_span
+ ] ,
+
+87 
+detected_answer_text
+ = 
+detected_answer
+ [ "text" ]
+
+92 
+matching_answer_strings
+ = [ ]
+
+93 
+matching_start_char_spans
+ = [ ]
+
+97 
+question_allowed_answers
+ += [
+
+98 
+straighten_curly_quotes
+ ( 
+answer
+ ) for 
+answer
+ in 
+question_allowed_answers
+
+100 
+normalized_allowed_answers
+ = [
+
+101 
+squad_normalize_answer
+ ( 
+ans
+ ) for 
+ans
+ in 
+question_allowed_answers
+
+104 
+normalized_allowed_answers_nospace
+ = [
+
+105 
+re
+ . 
+sub
+ ( r"\s+" , "" , 
+ans
+ , 
+flags
+ = 
+re
+ . 
+UNICODE
+ )
+
+106 for 
+ans
+ in 
+normalized_allowed_answers
+
+108 
+normalized_allowed_answers
+ = (
+
+109 
+normalized_allowed_answers
+ + 
+normalized_allowed_answers_nospace
+
+111 for 
+char_span
+ in 
+detected_answer
+ [ "char_spans" ] :
+
+112 
+start_char_span
+ = 
+char_span
+ [ 0 ]
+
+113 
+end_char_span
+ = 
+char_span
+ [ 1 ]
+
+114 
+matched_answer_text_from_passage
+ = 
+passage
+ [
+
+115 
+start_char_span
+ : 
+start_char_span
+ + 
+len
+ ( 
+detected_answer_text
+ )
+
+117 
+answer_text_from_detected_answer_spans
+ = 
+passage
+ [
+
+118 
+start_char_span
+ : 
+end_char_span
+ + 1
+
+127 
+squad_normalize_answer
+ ( 
+matched_answer_text_from_passage
+ )
+
+128 in 
+normalized_allowed_answers
+
+131 
+squad_normalize_answer
+ (
+
+132 
+matched_answer_text_from_passage
+ . 
+replace
+ ( "-" , " " )
+
+134 in 
+normalized_allowed_answers
+
+137 
+squad_normalize_answer
+ (
+
+138 
+matched_answer_text_from_passage
+ . 
+replace
+ ( "'" , " " )
+
+140 in 
+normalized_allowed_answers
+
+143 
+matching_answer_strings
+ . 
+append
+ ( 
+matched_answer_text_from_passage
+ )
+
+144 
+matching_start_char_spans
+ . 
+append
+ ( 
+start_char_span
+ )
+
+147 
+squad_normalize_answer
+ ( 
+answer_text_from_detected_answer_spans
+ )
+
+148 in 
+normalized_allowed_answers
+
+151 
+squad_normalize_answer
+ (
+
+152 
+answer_text_from_detected_answer_spans
+ . 
+replace
+ ( "-" , " " )
+
+154 in 
+normalized_allowed_answers
+
+157 
+squad_normalize_answer
+ (
+
+158 
+answer_text_from_detected_answer_spans
+ . 
+replace
+ ( "'" , " " )
+
+160 in 
+normalized_allowed_answers
+
+163 
+matching_answer_strings
+ . 
+append
+ ( 
+answer_text_from_detected_answer_spans
+ )
+
+164 
+matching_start_char_spans
+ . 
+append
+ ( 
+start_char_span
+ )
+
+165 if 
+matching_answer_strings
+ :
+
+168 
+best_ratio
+ = - 1.0
+
+169 
+best_answer_string
+ = None
+
+170 
+best_start_char_span
+ = None
+
+172 
+checked_answers
+ = 
+set
+ ( )
+
+173 for 
+answer
+ , 
+start_span
+ in 
+zip
+ (
+
+174 
+matching_answer_strings
+ , 
+matching_start_char_spans
+
+176 if 
+answer
+ in 
+checked_answers
+ :
+
+178 for 
+question_allowed_answer
+ in 
+question_allowed_answers
+ :
+
+179 
+ratio
+ = 
+fuzz
+ . 
+ratio
+ ( 
+question_allowed_answer
+ . 
+lower
+ ( ) , 
+answer
+ . 
+lower
+ ( ) )
+
+180 if 
+ratio
+ > 
+best_ratio
+ :
+
+181 
+best_ratio
+ = 
+ratio
+
+182 
+best_answer_string
+ = 
+answer
+
+183 
+best_start_char_span
+ = 
+start_span
+
+184 
+checked_answers
+ . 
+add
+ ( 
+answer
+ )
+
+185 
+question_squad_format_answers
+ . 
+append
+ (
+
+186 { "answer_start" : 
+best_start_char_span
+ , "text" : 
+best_answer_string
+ }
+
+189 
+print
+ ( "WARNING: Couldn't get any of the detected answers " "to align exactly with a span in the passage."
+
+193 
+print
+ ( f"passage: {passage}" )
+
+194 
+print
+ ( f"detected answers: {question_detected_answers}" )
+
+195 
+questions_squad_format_answers
+ . 
+append
+ ( 
+question_squad_format_answers
+ )
+
+196 
+squad_format_qas
+ = [ ]
+
+198 
+questions
+ = [
+
+199 
+qa
+ [ "question" ]
+
+200 for ( 
+qa
+ , 
+ans
+ ) in 
+zip
+ ( 
+mrqa_instance
+ [ "qas" ] , 
+questions_squad_format_answers
+ )
+
+201 if 
+ans
+
+203 
+qids
+ = [
+
+204 
+qa
+ [ "qid" ]
+
+205 for ( 
+qa
+ , 
+ans
+ ) in 
+zip
+ ( 
+mrqa_instance
+ [ "qas" ] , 
+questions_squad_format_answers
+ )
+
+206 if 
+ans
+
+208 
+questions_squad_format_answers
+ = [ 
+ans
+ for 
+ans
+ in 
+questions_squad_format_answers
+ if 
+ans
+ ]
+
+209 assert 
+len
+ ( 
+questions
+ ) == 
+len
+ ( 
+qids
+ )
+
+210 assert 
+len
+ ( 
+qids
+ ) == 
+len
+ ( 
+questions_squad_format_answers
+ )
+
+211 for 
+question
+ , 
+qid
+ , 
+squad_format_answers
+ in 
+zip
+ (
+
+212 
+questions
+ , 
+qids
+ , 
+questions_squad_format_answers
+
+214 
+question
+ = 
+question
+ . 
+replace
+ ( "\xa0" , " " ) . 
+replace
+ ( "\u2019" , "'" )
+
+215 
+squad_format_qas
+ . 
+append
+ (
+
+216 { "question" : 
+question
+ , "id" : 
+qid
+ , "answers" : 
+squad_format_answers
+ }
+
+218 
+new_instance
+ = { "title"
+
+219 : 
+passage
+ [ : 50 ] , "paragraphs"
+
+220 : [ { "context" : 
+passage
+ , "qas" : 
+squad_format_qas
+ } ] ,
+
+222 
+instances
+ . 
+append
+ ( 
+new_instance
+ )
+
+223 return 
+instances
+ 
+	}
+
+226 def 
+	$squad_normalize_answer
+ ( 
+s
+ ) :
+
+229 def 
+remove_articles
+ ( 
+text
+ ) :
+
+230 return 
+re
+ . 
+sub
+ ( r"\b(a|an|the)\b" , " " , 
+text
+ )
+
+232 def 
+white_space_fix
+ ( 
+text
+ ) :
+
+233 return " " . 
+join
+ ( 
+text
+ . 
+split
+ ( ) )
+
+235 def 
+remove_punc
+ ( 
+text
+ ) :
+
+236 
+exclude
+ = 
+set
+ ( 
+string
+ . 
+punctuation
+ )
+
+237 return "" . 
+join
+ ( 
+ch
+ for 
+ch
+ in 
+text
+ if 
+ch
+ not in 
+exclude
+ )
+
+239 def 
+lower
+ ( 
+text
+ ) :
+
+240 return 
+text
+ . 
+lower
+ ( )
+
+242 return 
+white_space_fix
+ ( 
+remove_articles
+ ( 
+remove_punc
+ ( 
+lower
+ ( 
+s
+ ) ) ) ) 
+	}
+
+245 def 
+	$straighten_curly_quotes
+ ( 
+text
+ ) :
+
+247 
+text
+ . 
+replace
+ ( "\u201c" , '"' )
+
+248 . 
+replace
+ ( "\u201d" , '"' )
+
+249 . 
+replace
+ ( "\u2018" , "'" )
+
+250 . 
+replace
+ ( "\u2019" , "'" )
+
+251 ) 
+	}
+
+254 if 
+__name__
+ == "__main__" :
+
+255 
+logging
+ . 
+basicConfig
+ (
+
+256 
+format
+ = "%(asctime)s - %(levelname)s " "- %(name)s - %(message)s" , 
+level
+ = 
+logging
+ . 
+INFO
+
+258 
+parser
+ = 
+argparse
+ . 
+ArgumentParser
+ (
+
+259 
+description
+ = ( "Convert a MRQA-formatted dataset into SQuADv1.1 format." ) ,
+
+260 
+formatter_class
+ = 
+argparse
+ . 
+ArgumentDefaultsHelpFormatter
+ ,
+
+262 
+parser
+ . 
+add_argument
+ ( "--input-path"
+
+263 , 
+type
+ = 
+str
+ , 
+required
+ = True , 
+help
+ = ( "Path to MRQA-format data to convert." )
+
+265 
+parser
+ . 
+add_argument
+ ( "--output-path"
+
+267 
+type
+ = 
+str
+ ,
+
+268 
+required
+ = True ,
+
+269 
+help
+ = ( "Path prefix to write SQuADv1.1-formatted dataset." ) ,
+
+271 
+parser
+ . 
+add_argument
+ ( "--verbose"
+
+273 
+action
+ = "store_true" ,
+
+274 
+help
+ = ( "Print warnings when detected answer in MRQA instance " "doesn't match paragraph-extracted answer."
+
+279 
+args
+ = 
+parser
+ . 
+parse_args
+ ( )
+
+280 
+main
+ ( 
+args
+ . 
+input_path
+ , 
+args
+ . 
+output_path
+ , 
+args
+ . 
+verbose
+ )
+
+
+	@./util.py
+
+1 import 
+	~json
+
+2 import 
+	~random
+
+3 import 
+	~os
+
+4 import 
+	~logging
+
+5 import 
+	~pickle
+
+6 import 
+	~string
+
+7 import 
+	~re
+
+8 from 
+	~pathlib
+ import 
+Path
+
+9 from 
+	~collections
+ import 
+Counter
+ , 
+OrderedDict
+ , 
+defaultdict
+ as 
+ddict
+
+10 import 
+	~torch
+
+11 import 
+	~numpy
+ as 
+np
+
+12 from 
+	~tqdm
+ import 
+tqdm
+
+13 from 
+	~torch.utils.data
+ import 
+Dataset
+
+15 def 
+	$set_seed
+ ( 
+seed
+ ) :
+
+16 
+random
+ . 
+seed
+ ( 
+seed
+ )
+
+17 
+np
+ . 
+random
+ . 
+seed
+ ( 
+seed
+ )
+
+18 
+torch
+ . 
+manual_seed
+ ( 
+seed
+ )
+
+19 
+torch
+ . 
+cuda
+ . 
+manual_seed_all
+ ( 
+seed
+ ) 
+	}
+
+21 def 
+	$load_pickle
+ ( 
+path
+ ) :
+
+22 with 
+open
+ ( 
+path
+ , 'rb' ) as 
+f
+ :
+
+23 
+obj
+ = 
+pickle
+ . 
+load
+ ( 
+f
+ )
+
+24 return 
+obj
+ 
+	}
+
+26 def 
+	$save_pickle
+ ( 
+obj
+ , 
+path
+ ) :
+
+27 with 
+open
+ ( 
+path
+ , 'wb' ) as 
+f
+ :
+
+28 
+pickle
+ . 
+dump
+ ( 
+obj
+ , 
+f
+ )
+
+29 return 
+	}
+
+31 def 
+	$visualize
+ ( 
+tbx
+ , 
+pred_dict
+ , 
+gold_dict
+ , 
+step
+ , 
+split
+ , 
+num_visuals
+ ) :
+
+41 if 
+num_visuals
+ <= 0 :
+
+43 if 
+num_visuals
+ > 
+len
+ ( 
+pred_dict
+ ) :
+
+44 
+num_visuals
+ = 
+len
+ ( 
+pred_dict
+ )
+
+45 
+id2index
+ = { 
+curr_id
+ : 
+idx
+ for 
+idx
+ , 
+curr_id
+ in 
+enumerate
+ ( 
+gold_dict
+ [ 'id' ] ) }
+
+46 
+visual_ids
+ = 
+np
+ . 
+random
+ . 
+choice
+ ( 
+list
+ ( 
+pred_dict
+ ) , 
+size
+ = 
+num_visuals
+ , 
+replace
+ = False )
+
+47 for 
+i
+ , 
+id_
+ in 
+enumerate
+ ( 
+visual_ids
+ ) :
+
+48 
+pred
+ = 
+pred_dict
+ [ 
+id_
+ ] or 'N/A'
+
+49 
+idx_gold_dict
+ = 
+id2index
+ [ 
+id_
+ ]
+
+50 
+question
+ = 
+gold_dict
+ [ 'question' ] [ 
+idx_gold_dict
+ ]
+
+51 
+context
+ = 
+gold_dict
+ [ 'context' ] [ 
+idx_gold_dict
+ ]
+
+52 
+answers
+ = 
+gold_dict
+ [ 'answer' ] [ 
+idx_gold_dict
+ ]
+
+53 
+gold
+ = 
+answers
+ [ 'text' ] [ 0 ] if 
+answers
+ else 'N/A'
+
+54 
+tbl_fmt
+ = ( f'- **Question:** {question}\n'
+
+58 
+tbx
+ . 
+add_text
+ ( 
+tag
+ = f'{split}/{i+1}_of_{num_visuals}' ,
+
+59 
+text_string
+ = 
+tbl_fmt
+ ,
+
+60 
+global_step
+ = 
+step
+ ) 
+	}
+
+63 def 
+	$get_save_dir
+ ( 
+base_dir
+ , 
+name
+ , 
+id_max
+ = 100 ) :
+
+64 for 
+uid
+ in 
+range
+ ( 1 , 
+id_max
+ ) :
+
+65 
+save_dir
+ = 
+os
+ . 
+path
+ . 
+join
+ ( 
+base_dir
+ , f'{name}-{uid:02d}' )
+
+66 if not 
+os
+ . 
+path
+ . 
+exists
+ ( 
+save_dir
+ ) :
+
+67 
+os
+ . 
+makedirs
+ ( 
+save_dir
+ )
+
+68 return 
+save_dir
+
+70 raise 
+RuntimeError
+ ( 'Too many save directories created with the same name. \\n                       Delete old save directories or use another name.'
+
+71 ) 
+	}
+
+74 def 
+	$filter_encodings
+ ( 
+encodings
+ ) :
+
+75 
+filter_idx
+ = [ 
+idx
+ for 
+idx
+ , 
+val
+ in 
+enumerate
+ ( 
+encodings
+ [ 'end_positions' ] )
+
+76 if not 
+val
+ ]
+
+77 
+filter_idx
+ = 
+set
+ ( 
+filter_idx
+ )
+
+78 
+encodings_filtered
+ = { 
+key
+ : [ ] for 
+key
+ in 
+encodings
+ }
+
+79 
+sz
+ = 
+len
+ ( 
+encodings
+ [ 'input_ids' ] )
+
+80 for 
+idx
+ in 
+range
+ ( 
+sz
+ ) :
+
+81 if 
+idx
+ not in 
+filter_idx
+ :
+
+82 for 
+key
+ in 
+encodings
+ :
+
+83 
+encodings_filtered
+ [ 
+key
+ ] . 
+append
+ ( 
+encodings
+ [ 
+key
+ ] [ 
+idx
+ ] )
+
+84 return 
+encodings_filtered
+ 
+	}
+
+86 def 
+	$merge
+ ( 
+encodings
+ , 
+new_encoding
+ ) :
+
+87 if not 
+encodings
+ :
+
+88 return 
+new_encoding
+
+90 for 
+key
+ in 
+new_encoding
+ :
+
+91 
+encodings
+ [ 
+key
+ ] += 
+new_encoding
+ [ 
+key
+ ]
+
+92 return 
+encodings
+ 
+	}
+
+94 def 
+	$get_logger
+ ( 
+log_dir
+ , 
+name
+ ) :
+
+105 class 
+	cStreamHandlerWithTQDM
+ ( 
+logging
+ . 
+Handler
+ ) :
+
+111 def 
+emit
+ ( 
+self
+ , 
+record
+ ) :
+
+113 
+msg
+ = 
+self
+ . 
+format
+ ( 
+record
+ )
+
+114 
+tqdm
+ . 
+write
+ ( 
+msg
+ )
+
+115 
+self
+ . 
+flush
+ ( )
+
+116 except ( 
+KeyboardInterrupt
+ , 
+SystemExit
+ ) :
+
+119 
+self
+ . 
+handleError
+ ( 
+record
+ )
+
+122 
+logger
+ = 
+logging
+ . 
+getLogger
+ ( 
+name
+ )
+
+123 
+logger
+ . 
+setLevel
+ ( 
+logging
+ . 
+DEBUG
+ )
+
+126 
+log_path
+ = 
+os
+ . 
+path
+ . 
+join
+ ( 
+log_dir
+ , f'{name}.txt' )
+
+127 
+file_handler
+ = 
+logging
+ . 
+FileHandler
+ ( 
+log_path
+ )
+
+128 
+file_handler
+ . 
+setLevel
+ ( 
+logging
+ . 
+DEBUG
+ )
+
+131 
+console_handler
+ = 
+StreamHandlerWithTQDM
+ ( )
+
+132 
+console_handler
+ . 
+setLevel
+ ( 
+logging
+ . 
+INFO
+ )
+
+135 
+file_formatter
+ = 
+logging
+ . 
+Formatter
+ ( '[%(asctime)s] %(message)s' ,
+
+136 
+datefmt
+ = '%m.%d.%y %H:%M:%S' )
+
+137 
+file_handler
+ . 
+setFormatter
+ ( 
+file_formatter
+ )
+
+138 
+console_formatter
+ = 
+logging
+ . 
+Formatter
+ ( '[%(asctime)s] %(message)s' ,
+
+139 
+datefmt
+ = '%m.%d.%y %H:%M:%S' )
+
+140 
+console_handler
+ . 
+setFormatter
+ ( 
+console_formatter
+ )
+
+143 
+logger
+ . 
+addHandler
+ ( 
+file_handler
+ )
+
+144 
+logger
+ . 
+addHandler
+ ( 
+console_handler
+ )
+
+146 return 
+logger
+ 
+	}
+
+148 class 
+	cAverageMeter
+ :
+
+154 def 
+	$__init__
+ ( 
+self
+ ) :
+
+155 
+self
+ . 
+avg
+ = 0
+
+156 
+self
+ . 
+sum
+ = 0
+
+157 
+self
+ . 
+count
+ = 0 
+	}
+
+159 def 
+	$reset
+ ( 
+self
+ ) :
+
+161 
+self
+ . 
+__init__
+ ( ) 
+	}
+
+163 def 
+	$update
+ ( 
+self
+ , 
+val
+ , 
+num_samples
+ = 1 ) :
+
+171 
+self
+ . 
+count
+ += 
+num_samples
+
+172 
+self
+ . 
+sum
+ += 
+val
+ * 
+num_samples
+
+173 
+self
+ . 
+avg
+ = 
+self
+ . 
+sum
+ / 
+self
+ . 
+count
+ 
+	}
+
+175 class 
+	cQADataset
+ ( 
+Dataset
+ ) :
+
+176 def 
+	$__init__
+ ( 
+self
+ , 
+encodings
+ , 
+train
+ = True ) :
+
+177 
+self
+ . 
+encodings
+ = 
+encodings
+
+178 
+self
+ . 
+keys
+ = [ 'input_ids' , 'attention_mask' ]
+
+179 if 
+train
+ :
+
+180 
+self
+ . 
+keys
+ += [ 'start_positions' , 'end_positions' ]
+
+181 assert ( 
+all
+ ( 
+key
+ in 
+self
+ . 
+encodings
+ for 
+key
+ in 
+self
+ . 
+keys
+ ) ) 
+	}
+
+183 def 
+	$__getitem__
+ ( 
+self
+ , 
+idx
+ ) :
+
+184 return { 
+key
+ : 
+torch
+ . 
+tensor
+ ( 
+self
+ . 
+encodings
+ [ 
+key
+ ] [ 
+idx
+ ] ) for 
+key
+ in 
+self
+ . 
+keys
+ } 
+	}
+
+186 def 
+	$__len__
+ ( 
+self
+ ) :
+
+187 return 
+len
+ ( 
+self
+ . 
+encodings
+ [ 'input_ids' ] ) 
+	}
+
+189 def 
+	$read_squad
+ ( 
+path
+ ) :
+
+190 
+path
+ = 
+Path
+ ( 
+path
+ )
+
+191 with 
+open
+ ( 
+path
+ , 'rb' ) as 
+f
+ :
+
+192 
+squad_dict
+ = 
+json
+ . 
+load
+ ( 
+f
+ )
+
+193 
+data_dict
+ = { 'question' : [ ] , 'context' : [ ] , 'id' : [ ] , 'answer' : [ ] }
+
+194 for 
+group
+ in 
+squad_dict
+ [ 'data' ] :
+
+195 for 
+passage
+ in 
+group
+ [ 'paragraphs' ] :
+
+196 
+context
+ = 
+passage
+ [ 'context' ]
+
+197 for 
+qa
+ in 
+passage
+ [ 'qas' ] :
+
+198 
+question
+ = 
+qa
+ [ 'question' ]
+
+199 if 
+len
+ ( 
+qa
+ [ 'answers' ] ) == 0 :
+
+200 
+data_dict
+ [ 'question' ] . 
+append
+ ( 
+question
+ )
+
+201 
+data_dict
+ [ 'context' ] . 
+append
+ ( 
+context
+ )
+
+202 
+data_dict
+ [ 'id' ] . 
+append
+ ( 
+qa
+ [ 'id' ] )
+
+204 for 
+answer
+ in 
+qa
+ [ 'answers' ] :
+
+205 
+data_dict
+ [ 'question' ] . 
+append
+ ( 
+question
+ )
+
+206 
+data_dict
+ [ 'context' ] . 
+append
+ ( 
+context
+ )
+
+207 
+data_dict
+ [ 'id' ] . 
+append
+ ( 
+qa
+ [ 'id' ] )
+
+208 
+data_dict
+ [ 'answer' ] . 
+append
+ ( 
+answer
+ )
+
+215 
+id_map
+ = 
+ddict
+ ( 
+list
+ )
+
+216 for 
+idx
+ , 
+qid
+ in 
+enumerate
+ ( 
+data_dict
+ [ 'id' ] ) :
+
+217 
+id_map
+ [ 
+qid
+ ] . 
+append
+ ( 
+idx
+ )
+
+219 
+data_dict_collapsed
+ = { 'question' : [ ] , 'context' : [ ] , 'id' : [ ] }
+
+220 if 
+data_dict
+ [ 'answer' ] :
+
+221 
+data_dict_collapsed
+ [ 'answer' ] = [ ]
+
+222 for 
+qid
+ in 
+id_map
+ :
+
+223 
+ex_ids
+ = 
+id_map
+ [ 
+qid
+ ]
+
+224 
+data_dict_collapsed
+ [ 'question' ] . 
+append
+ ( 
+data_dict
+ [ 'question' ] [ 
+ex_ids
+ [ 0 ] ] )
+
+225 
+data_dict_collapsed
+ [ 'context' ] . 
+append
+ ( 
+data_dict
+ [ 'context' ] [ 
+ex_ids
+ [ 0 ] ] )
+
+226 
+data_dict_collapsed
+ [ 'id' ] . 
+append
+ ( 
+qid
+ )
+
+227 if 
+data_dict
+ [ 'answer' ] :
+
+228 
+all_answers
+ = [ 
+data_dict
+ [ 'answer' ] [ 
+idx
+ ] for 
+idx
+ in 
+ex_ids
+ ]
+
+229 
+data_dict_collapsed
+ [ 'answer' ] . 
+append
+ ( { 'answer_start' : [ 
+answer
+ [ 'answer_start' ] for 
+answer
+ in 
+all_answers
+ ] , 'text'
+
+230 : [ 
+answer
+ [ 'text' ] for 
+answer
+ in 
+all_answers
+ ] } ) """\n        At this point, this is what it looks like:\n        {\n            'question':\n            [\n                'What sits on top of the Main Building at Notre Dame?'\n            ],\n            'context':\n            [\n                'Architecturally, the school has a Catholic character. Atop the Main Building\'s gold dome is a golden statue of the Virgin Mary. Immediately in front of the Main Building and facing it, is a copper statue of Christ with arms upraised with the legend "Venite Ad Me Omnes". Next to the Main Building is the Basilica of the Sacred Heart. Immediately behind the basilica is the Grotto, a Marian place of prayer and reflection. It is a replica of the grotto at Lourdes, France where the Virgin Mary reputedly appeared to Saint Bernadette Soubirous in 1858. At the end of the main drive (and in a direct line that connects through 3 statues and the Gold Dome), is a simple, modern stone statue of Mary.'\n            ],\n            'id': ['1c969af40a3248eb87a6d8c9c7c8d4ad'],\n            'answer':\n            [\n                {\n                    'answer_start': [92],\n                    'text': ['a golden statue of the Virgin Mary']\n                }\n            ]\n        }\n        """
+
+252 return 
+data_dict_collapsed
+ 
+	}
+
+254 def 
+	$add_token_positions
+ ( 
+encodings
+ , 
+answers
+ , 
+tokenizer
+ ) :
+
+255 
+start_positions
+ = [ ]
+
+256 
+end_positions
+ = [ ]
+
+257 for 
+i
+ in 
+range
+ ( 
+len
+ ( 
+answers
+ ) ) :
+
+258 
+start_positions
+ . 
+append
+ ( 
+encodings
+ . 
+char_to_token
+ ( 
+i
+ , 
+answers
+ [ 
+i
+ ] [ 'answer_start' ] ) )
+
+259 
+end_positions
+ . 
+append
+ ( 
+encodings
+ . 
+char_to_token
+ ( 
+i
+ , 
+answers
+ [ 
+i
+ ] [ 'answer_end' ] ) )
+
+262 if 
+start_positions
+ [ - 1 ] is None :
+
+263 
+start_positions
+ [ - 1 ] = 
+tokenizer
+ . 
+model_max_length
+
+266 if 
+end_positions
+ [ - 1 ] is None :
+
+267 
+end_positions
+ [ - 1 ] = 
+encodings
+ . 
+char_to_token
+ ( 
+i
+ , 
+answers
+ [ 
+i
+ ] [ 'answer_end' ] + 1 )
+
+268 
+encodings
+ . 
+update
+ ( { 'start_positions' : 
+start_positions
+ , 'end_positions' : 
+end_positions
+ } ) 
+	}
+
+271 def 
+	$add_end_idx
+ ( 
+answers
+ , 
+contexts
+ ) :
+
+272 for 
+answer
+ , 
+context
+ in 
+zip
+ ( 
+answers
+ , 
+contexts
+ ) :
+
+273 
+gold_text
+ = 
+answer
+ [ 'text' ]
+
+274 
+start_idx
+ = 
+answer
+ [ 'answer_start' ]
+
+275 
+end_idx
+ = 
+start_idx
+ + 
+len
+ ( 
+gold_text
+ )
+
+278 if 
+context
+ [ 
+start_idx
+ : 
+end_idx
+ ] == 
+gold_text
+ :
+
+279 
+answer
+ [ 'answer_end' ] = 
+end_idx
+
+280 elif 
+context
+ [ 
+start_idx
+ - 1 : 
+end_idx
+ - 1 ] == 
+gold_text
+ :
+
+281 
+answer
+ [ 'answer_start' ] = 
+start_idx
+ - 1
+
+282 
+answer
+ [ 'answer_end' ] = 
+end_idx
+ - 1
+
+283 elif 
+context
+ [ 
+start_idx
+ - 2 : 
+end_idx
+ - 2 ] == 
+gold_text
+ :
+
+284 
+answer
+ [ 'answer_start' ] = 
+start_idx
+ - 2
+
+285 
+answer
+ [ 'answer_end' ] = 
+end_idx
+ - 2 
+	}
+
+287 def 
+	$convert_tokens
+ ( 
+eval_dict
+ , 
+qa_id
+ , 
+y_start_list
+ , 
+y_end_list
+ ) :
+
+302 
+pred_dict
+ = { }
+
+303 
+sub_dict
+ = { }
+
+304 for 
+qid
+ , 
+y_start
+ , 
+y_end
+ in 
+zip
+ ( 
+qa_id
+ , 
+y_start_list
+ , 
+y_end_list
+ ) :
+
+305 
+context
+ = 
+eval_dict
+ [ 
+str
+ ( 
+qid
+ ) ] [ "context" ]
+
+306 
+spans
+ = 
+eval_dict
+ [ 
+str
+ ( 
+qid
+ ) ] [ "spans" ]
+
+307 
+uuid
+ = 
+eval_dict
+ [ 
+str
+ ( 
+qid
+ ) ] [ "uuid" ]
+
+308 
+start_idx
+ = 
+spans
+ [ 
+y_start
+ ] [ 0 ]
+
+309 
+end_idx
+ = 
+spans
+ [ 
+y_end
+ ] [ 1 ]
+
+310 
+pred_dict
+ [ 
+str
+ ( 
+qid
+ ) ] = 
+context
+ [ 
+start_idx
+ : 
+end_idx
+ ]
+
+311 
+sub_dict
+ [ 
+uuid
+ ] = 
+context
+ [ 
+start_idx
+ : 
+end_idx
+ ]
+
+312 return 
+pred_dict
+ , 
+sub_dict
+ 
+	}
+
+314 def 
+	$metric_max_over_ground_truths
+ ( 
+metric_fn
+ , 
+prediction
+ , 
+ground_truths
+ ) :
+
+315 if not 
+ground_truths
+ :
+
+316 return 
+metric_fn
+ ( 
+prediction
+ , '' )
+
+317 
+scores_for_ground_truths
+ = [ ]
+
+318 for 
+ground_truth
+ in 
+ground_truths
+ :
+
+319 
+score
+ = 
+metric_fn
+ ( 
+prediction
+ , 
+ground_truth
+ )
+
+320 
+scores_for_ground_truths
+ . 
+append
+ ( 
+score
+ )
+
+321 return 
+max
+ ( 
+scores_for_ground_truths
+ ) 
+	}
+
+324 def 
+	$eval_dicts
+ ( 
+gold_dict
+ , 
+pred_dict
+ ) :
+
+325 
+avna
+ = 
+f1
+ = 
+em
+ = 
+total
+ = 0
+
+326 
+id2index
+ = { 
+curr_id
+ : 
+idx
+ for 
+idx
+ , 
+curr_id
+ in 
+enumerate
+ ( 
+gold_dict
+ [ 'id' ] ) }
+
+327 for 
+curr_id
+ in 
+pred_dict
+ :
+
+328 
+total
+ += 1
+
+329 
+index
+ = 
+id2index
+ [ 
+curr_id
+ ]
+
+330 
+ground_truths
+ = 
+gold_dict
+ [ 'answer' ] [ 
+index
+ ] [ 'text' ]
+
+331 
+prediction
+ = 
+pred_dict
+ [ 
+curr_id
+ ]
+
+332 
+em
+ += 
+metric_max_over_ground_truths
+ ( 
+compute_em
+ , 
+prediction
+ , 
+ground_truths
+ )
+
+333 
+f1
+ += 
+metric_max_over_ground_truths
+ ( 
+compute_f1
+ , 
+prediction
+ , 
+ground_truths
+ )
+
+335 
+eval_dict
+ = { 'EM' : 100. * 
+em
+ / 
+total
+ , 'F1'
+
+336 : 100. * 
+f1
+ / 
+total
+ }
+
+337 return 
+eval_dict
+ 
+	}
+
+339 def 
+	$postprocess_qa_predictions
+ ( 
+examples
+ , 
+features
+ , 
+predictions
+ ,
+
+340 
+n_best_size
+ = 20 , 
+max_answer_length
+ = 30 ) :
+
+341 
+all_start_logits
+ , 
+all_end_logits
+ = 
+predictions
+
+343 
+example_id_to_index
+ = { 
+k
+ : 
+i
+ for 
+i
+ , 
+k
+ in 
+enumerate
+ ( 
+examples
+ [ "id" ] ) }
+
+344 
+features_per_example
+ = 
+ddict
+ ( 
+list
+ )
+
+345 for 
+i
+ , 
+feat_id
+ in 
+enumerate
+ ( 
+features
+ [ 'id' ] ) :
+
+346 
+features_per_example
+ [ 
+example_id_to_index
+ [ 
+feat_id
+ ] ] . 
+append
+ ( 
+i
+ )
+
+349 
+all_predictions
+ = 
+OrderedDict
+ ( )
+
+352 for 
+example_index
+ in 
+tqdm
+ ( 
+range
+ ( 
+len
+ ( 
+examples
+ [ 'id' ] ) ) ) :
+
+353 
+example
+ = { 
+key
+ : 
+examples
+ [ 
+key
+ ] [ 
+example_index
+ ] for 
+key
+ in 
+examples
+ }
+
+355 
+feature_indices
+ = 
+features_per_example
+ [ 
+example_index
+ ]
+
+356 
+prelim_predictions
+ = [ ]
+
+359 for 
+feature_index
+ in 
+feature_indices
+ :
+
+361 
+start_logits
+ = 
+all_start_logits
+ [ 
+feature_index
+ ]
+
+362 
+end_logits
+ = 
+all_end_logits
+ [ 
+feature_index
+ ]
+
+363 
+seq_ids
+ = 
+features
+ . 
+sequence_ids
+ ( 
+feature_index
+ )
+
+364 
+non_pad_idx
+ = 
+len
+ ( 
+seq_ids
+ ) - 1
+
+365 while not 
+seq_ids
+ [ 
+non_pad_idx
+ ] :
+
+366 
+non_pad_idx
+ -= 1
+
+367 
+start_logits
+ = 
+start_logits
+ [ : 
+non_pad_idx
+ ]
+
+368 
+end_logits
+ = 
+end_logits
+ [ : 
+non_pad_idx
+ ]
+
+371 
+offset_mapping
+ = 
+features
+ [ "offset_mapping" ] [ 
+feature_index
+ ]
+
+374 
+token_is_max_context
+ = 
+features
+ . 
+get
+ ( "token_is_max_context" , None )
+
+375 if 
+token_is_max_context
+ :
+
+376 
+token_is_max_context
+ = 
+token_is_max_context
+ [ 
+feature_index
+ ]
+
+380 
+start_indexes
+ = 
+np
+ . 
+argsort
+ ( 
+start_logits
+ ) [ - 1 : - 
+n_best_size
+ - 1 : - 1 ] . 
+tolist
+ ( )
+
+381 
+end_indexes
+ = 
+np
+ . 
+argsort
+ ( 
+end_logits
+ ) [ - 1 : - 
+n_best_size
+ - 1 : - 1 ] . 
+tolist
+ ( )
+
+382 for 
+start_index
+ in 
+start_indexes
+ :
+
+383 for 
+end_index
+ in 
+end_indexes
+ :
+
+387 
+start_index
+ >= 
+len
+ ( 
+offset_mapping
+ )
+
+388 or 
+end_index
+ >= 
+len
+ ( 
+offset_mapping
+ )
+
+389 or 
+offset_mapping
+ [ 
+start_index
+ ] is None
+
+390 or 
+offset_mapping
+ [ 
+end_index
+ ] is None
+
+394 if 
+end_index
+ <= 
+start_index
+ or 
+end_index
+ - 
+start_index
+ + 1 > 
+max_answer_length
+ :
+
+398 if 
+token_is_max_context
+ is not None and not 
+token_is_max_context
+ . 
+get
+ ( 
+str
+ ( 
+start_index
+ ) , False ) :
+
+400 
+prelim_predictions
+ . 
+append
+ (
+
+402 : 
+start_index
+ , "end_index"
+
+403 : 
+end_index
+ , "offsets"
+
+404 : ( 
+offset_mapping
+ [ 
+start_index
+ ] [ 0 ] , 
+offset_mapping
+ [ 
+end_index
+ ] [ 1 ] ) , "score"
+
+405 : 
+start_logits
+ [ 
+start_index
+ ] + 
+end_logits
+ [ 
+end_index
+ ] , "start_logit"
+
+406 : 
+start_logits
+ [ 
+start_index
+ ] , "end_logit"
+
+407 : 
+end_logits
+ [ 
+end_index
+ ] ,
+
+411 
+predictions
+ = 
+sorted
+ ( 
+prelim_predictions
+ , 
+key
+ = lambda 
+x
+ : 
+x
+ [ "score" ] , 
+reverse
+ = True ) [ : 
+n_best_size
+ ]
+
+414 
+context
+ = 
+example
+ [ "context" ]
+
+415 for 
+pred
+ in 
+predictions
+ :
+
+416 
+offsets
+ = 
+pred
+ [ 'offsets' ]
+
+417 
+pred
+ [ "text" ] = 
+context
+ [ 
+offsets
+ [ 0 ] : 
+offsets
+ [ 1 ] ]
+
+421 if 
+len
+ ( 
+predictions
+ ) == 0 :
+
+422 
+predictions
+ . 
+insert
+ ( 0 , { "text" : "empty" , "start_logit" : 0.0 , "end_logit" : 0.0 , "score" : 0.0 } )
+
+426 
+scores
+ = 
+np
+ . 
+array
+ ( [ 
+pred
+ . 
+pop
+ ( "score" ) for 
+pred
+ in 
+predictions
+ ] )
+
+427 
+exp_scores
+ = 
+np
+ . 
+exp
+ ( 
+scores
+ - 
+np
+ . 
+max
+ ( 
+scores
+ ) )
+
+428 
+probs
+ = 
+exp_scores
+ / 
+exp_scores
+ . 
+sum
+ ( )
+
+431 for 
+prob
+ , 
+pred
+ in 
+zip
+ ( 
+probs
+ , 
+predictions
+ ) :
+
+432 
+pred
+ [ "probability" ] = 
+prob
+
+435 
+i
+ = 0
+
+436 while 
+i
+ < 
+len
+ ( 
+predictions
+ ) :
+
+437 if 
+predictions
+ [ 
+i
+ ] [ 'text' ] != '' :
+
+439 
+i
+ += 1
+
+440 if 
+i
+ == 
+len
+ ( 
+predictions
+ ) :
+
+441 import 
+	~pdb
+ ; 
+pdb
+ . 
+set_trace
+ ( ) ;
+
+443 
+best_non_null_pred
+ = 
+predictions
+ [ 
+i
+ ]
+
+444 
+all_predictions
+ [ 
+example
+ [ "id" ] ] = 
+best_non_null_pred
+ [ "text" ]
+
+446 return 
+all_predictions
+ 
+	}
+
+452 def 
+	$normalize_answer
+ ( 
+s
+ ) :
+
+455 def 
+remove_articles
+ ( 
+text
+ ) :
+
+456 
+regex
+ = 
+re
+ . 
+compile
+ ( r'\b(a|an|the)\b' , 
+re
+ . 
+UNICODE
+ )
+
+457 return 
+re
+ . 
+sub
+ ( 
+regex
+ , ' ' , 
+text
+ )
+
+459 def 
+white_space_fix
+ ( 
+text
+ ) :
+
+460 return ' ' . 
+join
+ ( 
+text
+ . 
+split
+ ( ) )
+
+462 def 
+remove_punc
+ ( 
+text
+ ) :
+
+463 
+exclude
+ = 
+set
+ ( 
+string
+ . 
+punctuation
+ )
+
+464 return '' . 
+join
+ ( 
+ch
+ for 
+ch
+ in 
+text
+ if 
+ch
+ not in 
+exclude
+ )
+
+466 def 
+lower
+ ( 
+text
+ ) :
+
+467 return 
+text
+ . 
+lower
+ ( )
+
+469 return 
+white_space_fix
+ ( 
+remove_articles
+ ( 
+remove_punc
+ ( 
+lower
+ ( 
+s
+ ) ) ) ) 
+	}
+
+471 def 
+	$get_tokens
+ ( 
+s
+ ) :
+
+472 if not 
+s
+ :
+
+474 return 
+normalize_answer
+ ( 
+s
+ ) . 
+split
+ ( ) 
+	}
+
+476 def 
+	$compute_em
+ ( 
+a_gold
+ , 
+a_pred
+ ) :
+
+477 return 
+int
+ ( 
+normalize_answer
+ ( 
+a_gold
+ ) == 
+normalize_answer
+ ( 
+a_pred
+ ) ) 
+	}
+
+480 def 
+	$compute_f1
+ ( 
+a_gold
+ , 
+a_pred
+ ) :
+
+481 
+gold_toks
+ = 
+get_tokens
+ ( 
+a_gold
+ )
+
+482 
+pred_toks
+ = 
+get_tokens
+ ( 
+a_pred
+ )
+
+483 
+common
+ = 
+Counter
+ ( 
+gold_toks
+ ) & 
+Counter
+ ( 
+pred_toks
+ )
+
+484 
+num_same
+ = 
+sum
+ ( 
+common
+ . 
+values
+ ( ) )
+
+485 if 
+len
+ ( 
+gold_toks
+ ) == 0 or 
+len
+ ( 
+pred_toks
+ ) == 0 :
+
+487 return 
+int
+ ( 
+gold_toks
+ == 
+pred_toks
+ )
+
+488 if 
+num_same
+ == 0 :
+
+490 
+precision
+ = 1.0 * 
+num_same
+ / 
+len
+ ( 
+pred_toks
+ )
+
+491 
+recall
+ = 1.0 * 
+num_same
+ / 
+len
+ ( 
+gold_toks
+ )
+
+492 
+f1
+ = ( 2 * 
+precision
+ * 
+recall
+ ) / ( 
+precision
+ + 
+recall
+ )
+
+493 return 
+f1
+ 
+	}
+
+
+	@./train.py
+
+1 import 
+	~argparse
+
+2 import 
+	~json
+
+3 import 
+	~os
+
+4 from 
+	~collections
+ import 
+OrderedDict
+
+5 import 
+	~torch
+
+6 import 
+	~csv
+
+7 import 
+	~util
+
+8 from 
+	~transformers
+ import 
+DistilBertTokenizerFast
+
+9 from 
+	~transformers
+ import 
+DistilBertForQuestionAnswering
+
+10 from 
+	~transformers
+ import 
+AdamW
+
+11 from 
+	~tensorboardX
+ import 
+SummaryWriter
+
+14 from 
+	~torch.utils.data
+ import 
+DataLoader
+
+15 from 
+	~torch.utils.data.sampler
+ import 
+RandomSampler
+ , 
+SequentialSampler
+
+16 from 
+	~args
+ import 
+get_train_test_args
+
+18 from 
+	~tqdm
+ import 
+tqdm
+
+20 def 
+	$prepare_eval_data
+ ( 
+dataset_dict
+ , 
+tokenizer
+ ) :
+
+21 
+tokenized_examples
+ = 
+tokenizer
+ ( 
+dataset_dict
+ [ 'question' ] ,
+
+22 
+dataset_dict
+ [ 'context' ] ,
+
+23 
+truncation
+ = "only_second" ,
+
+24 
+stride
+ = 128 ,
+
+25 
+max_length
+ = 384 ,
+
+26 
+return_overflowing_tokens
+ = True ,
+
+27 
+return_offsets_mapping
+ = True ,
+
+28 
+padding
+ = 'max_length' )
+
+31 
+sample_mapping
+ = 
+tokenized_examples
+ . 
+pop
+ ( "overflow_to_sample_mapping" )
+
+35 
+tokenized_examples
+ [ "id" ] = [ ]
+
+36 for 
+i
+ in 
+tqdm
+ ( 
+range
+ ( 
+len
+ ( 
+tokenized_examples
+ [ "input_ids" ] ) ) ) :
+
+38 
+sequence_ids
+ = 
+tokenized_examples
+ . 
+sequence_ids
+ ( 
+i
+ )
+
+40 
+sample_index
+ = 
+sample_mapping
+ [ 
+i
+ ]
+
+41 
+tokenized_examples
+ [ "id" ] . 
+append
+ ( 
+dataset_dict
+ [ "id" ] [ 
+sample_index
+ ] )
+
+44 
+tokenized_examples
+ [ "offset_mapping" ] [ 
+i
+ ] = [
+
+45 ( 
+o
+ if 
+sequence_ids
+ [ 
+k
+ ] == 1 else None )
+
+46 for 
+k
+ , 
+o
+ in 
+enumerate
+ ( 
+tokenized_examples
+ [ "offset_mapping" ] [ 
+i
+ ] )
+
+49 return 
+tokenized_examples
+ 
+	}
+
+53 def 
+	$prepare_train_data
+ ( 
+dataset_dict
+ , 
+tokenizer
+ ) :
+
+54 
+tokenized_examples
+ = 
+tokenizer
+ ( 
+dataset_dict
+ [ 'question' ] ,
+
+55 
+dataset_dict
+ [ 'context' ] ,
+
+56 
+truncation
+ = "only_second" ,
+
+57 
+stride
+ = 128 ,
+
+58 
+max_length
+ = 384 ,
+
+59 
+return_overflowing_tokens
+ = True ,
+
+60 
+return_offsets_mapping
+ = True ,
+
+61 
+padding
+ = 'max_length' )
+
+62 
+sample_mapping
+ = 
+tokenized_examples
+ [ "overflow_to_sample_mapping" ]
+
+63 
+offset_mapping
+ = 
+tokenized_examples
+ [ "offset_mapping" ]
+
+66 
+tokenized_examples
+ [ "start_positions" ] = [ ]
+
+67 
+tokenized_examples
+ [ "end_positions" ] = [ ]
+
+68 
+tokenized_examples
+ [ 'id' ] = [ ]
+
+69 
+inaccurate
+ = 0
+
+70 for 
+i
+ , 
+offsets
+ in 
+enumerate
+ ( 
+tqdm
+ ( 
+offset_mapping
+ ) ) :
+
+72 
+input_ids
+ = 
+tokenized_examples
+ [ "input_ids" ] [ 
+i
+ ]
+
+73 
+cls_index
+ = 
+input_ids
+ . 
+index
+ ( 
+tokenizer
+ . 
+cls_token_id
+ )
+
+76 
+sequence_ids
+ = 
+tokenized_examples
+ . 
+sequence_ids
+ ( 
+i
+ )
+
+79 
+sample_index
+ = 
+sample_mapping
+ [ 
+i
+ ]
+
+80 
+answer
+ = 
+dataset_dict
+ [ 'answer' ] [ 
+sample_index
+ ]
+
+82 
+start_char
+ = 
+answer
+ [ 'answer_start' ] [ 0 ]
+
+83 
+end_char
+ = 
+start_char
+ + 
+len
+ ( 
+answer
+ [ 'text' ] [ 0 ] )
+
+84 
+tokenized_examples
+ [ 'id' ] . 
+append
+ ( 
+dataset_dict
+ [ 'id' ] [ 
+sample_index
+ ] )
+
+86 
+token_start_index
+ = 0
+
+87 while 
+sequence_ids
+ [ 
+token_start_index
+ ] != 1 :
+
+88 
+token_start_index
+ += 1
+
+91 
+token_end_index
+ = 
+len
+ ( 
+input_ids
+ ) - 1
+
+92 while 
+sequence_ids
+ [ 
+token_end_index
+ ] != 1 :
+
+93 
+token_end_index
+ -= 1
+
+96 if not ( 
+offsets
+ [ 
+token_start_index
+ ] [ 0 ] <= 
+start_char
+ and 
+offsets
+ [ 
+token_end_index
+ ] [ 1 ] >= 
+end_char
+ ) :
+
+97 
+tokenized_examples
+ [ "start_positions" ] . 
+append
+ ( 
+cls_index
+ )
+
+98 
+tokenized_examples
+ [ "end_positions" ] . 
+append
+ ( 
+cls_index
+ )
+
+102 while 
+token_start_index
+ < 
+len
+ ( 
+offsets
+ ) and 
+offsets
+ [ 
+token_start_index
+ ] [ 0 ] <= 
+start_char
+ :
+
+103 
+token_start_index
+ += 1
+
+104 
+tokenized_examples
+ [ "start_positions" ] . 
+append
+ ( 
+token_start_index
+ - 1 )
+
+105 while 
+offsets
+ [ 
+token_end_index
+ ] [ 1 ] >= 
+end_char
+ :
+
+106 
+token_end_index
+ -= 1
+
+107 
+tokenized_examples
+ [ "end_positions" ] . 
+append
+ ( 
+token_end_index
+ + 1 )
+
+109 
+context
+ = 
+dataset_dict
+ [ 'context' ] [ 
+sample_index
+ ]
+
+110 
+offset_st
+ = 
+offsets
+ [ 
+tokenized_examples
+ [ 'start_positions' ] [ - 1 ] ] [ 0 ]
+
+111 
+offset_en
+ = 
+offsets
+ [ 
+tokenized_examples
+ [ 'end_positions' ] [ - 1 ] ] [ 1 ]
+
+112 if 
+context
+ [ 
+offset_st
+ : 
+offset_en
+ ] != 
+answer
+ [ 'text' ] [ 0 ] :
+
+113 
+inaccurate
+ += 1
+
+115 
+total
+ = 
+len
+ ( 
+tokenized_examples
+ [ 'id' ] )
+
+116 
+print
+ ( f"Preprocessing not completely accurate for {inaccurate}/{total} instances" )
+
+117 return 
+tokenized_examples
+ 
+	}
+
+121 def 
+	$read_and_process
+ ( 
+args
+ , 
+tokenizer
+ , 
+dataset_dict
+ , 
+dir_name
+ , 
+dataset_name
+ , 
+split
+ ) :
+
+123 
+cache_path
+ = f'{dir_name}/{dataset_name}_encodings.pt'
+
+124 if 
+os
+ . 
+path
+ . 
+exists
+ ( 
+cache_path
+ ) and not 
+args
+ . 
+recompute_features
+ :
+
+125 
+tokenized_examples
+ = 
+util
+ . 
+load_pickle
+ ( 
+cache_path
+ )
+
+127 if 
+split
+ == 'train' :
+
+128 
+tokenized_examples
+ = 
+prepare_train_data
+ ( 
+dataset_dict
+ , 
+tokenizer
+ )
+
+130 
+tokenized_examples
+ = 
+prepare_eval_data
+ ( 
+dataset_dict
+ , 
+tokenizer
+ )
+
+131 
+util
+ . 
+save_pickle
+ ( 
+tokenized_examples
+ , 
+cache_path
+ )
+
+132 return 
+tokenized_examples
+ 
+	}
+
+137 class 
+	cTrainer
+ ( ) :
+
+138 def 
+	$__init__
+ ( 
+self
+ , 
+args
+ , 
+log
+ ) :
+
+139 
+self
+ . 
+lr
+ = 
+args
+ . 
+lr
+
+140 
+self
+ . 
+num_epochs
+ = 
+args
+ . 
+num_epochs
+
+141 
+self
+ . 
+device
+ = 
+args
+ . 
+device
+
+142 
+self
+ . 
+eval_every
+ = 
+args
+ . 
+eval_every
+
+143 
+self
+ . 
+path
+ = 
+os
+ . 
+path
+ . 
+join
+ ( 
+args
+ . 
+save_dir
+ , 'checkpoint' )
+
+144 
+self
+ . 
+num_visuals
+ = 
+args
+ . 
+num_visuals
+
+145 
+self
+ . 
+save_dir
+ = 
+args
+ . 
+save_dir
+
+146 
+self
+ . 
+log
+ = 
+log
+
+147 
+self
+ . 
+visualize_predictions
+ = 
+args
+ . 
+visualize_predictions
+
+148 if not 
+os
+ . 
+path
+ . 
+exists
+ ( 
+self
+ . 
+path
+ ) :
+
+149 
+os
+ . 
+makedirs
+ ( 
+self
+ . 
+path
+ ) 
+	}
+
+151 def 
+	$save
+ ( 
+self
+ , 
+model
+ ) :
+
+152 
+model
+ . 
+save_pretrained
+ ( 
+self
+ . 
+path
+ ) 
+	}
+
+154 def 
+	$evaluate
+ ( 
+self
+ , 
+model
+ , 
+data_loader
+ , 
+data_dict
+ , 
+return_preds
+ = False , 
+split
+ = 'validation' ) :
+
+155 
+device
+ = 
+self
+ . 
+device
+
+157 
+model
+ . 
+eval
+ ( )
+
+158 
+pred_dict
+ = { }
+
+159 
+all_start_logits
+ = [ ]
+
+160 
+all_end_logits
+ = [ ]
+
+161 with 
+torch
+ . 
+no_grad
+ ( ) ,
+
+162 
+tqdm
+ ( 
+total
+ = 
+len
+ ( 
+data_loader
+ . 
+dataset
+ ) ) as 
+progress_bar
+ :
+
+163 for 
+batch
+ in 
+data_loader
+ :
+
+165 
+input_ids
+ = 
+batch
+ [ 'input_ids' ] . 
+to
+ ( 
+device
+ )
+
+166 
+attention_mask
+ = 
+batch
+ [ 'attention_mask' ] . 
+to
+ ( 
+device
+ )
+
+167 
+batch_size
+ = 
+len
+ ( 
+input_ids
+ )
+
+168 
+outputs
+ = 
+model
+ ( 
+input_ids
+ , 
+attention_mask
+ = 
+attention_mask
+ )
+
+170 
+start_logits
+ , 
+end_logits
+ = 
+outputs
+ . 
+start_logits
+ , 
+outputs
+ . 
+end_logits
+
+173 
+all_start_logits
+ . 
+append
+ ( 
+start_logits
+ )
+
+174 
+all_end_logits
+ . 
+append
+ ( 
+end_logits
+ )
+
+175 
+progress_bar
+ . 
+update
+ ( 
+batch_size
+ )
+
+178 
+start_logits
+ = 
+torch
+ . 
+cat
+ ( 
+all_start_logits
+ ) . 
+cpu
+ ( ) . 
+numpy
+ ( )
+
+179 
+end_logits
+ = 
+torch
+ . 
+cat
+ ( 
+all_end_logits
+ ) . 
+cpu
+ ( ) . 
+numpy
+ ( )
+
+180 
+preds
+ = 
+util
+ . 
+postprocess_qa_predictions
+ ( 
+data_dict
+ ,
+
+181 
+data_loader
+ . 
+dataset
+ . 
+encodings
+ ,
+
+182 ( 
+start_logits
+ , 
+end_logits
+ ) )
+
+183 if 
+split
+ == 'validation' :
+
+184 
+results
+ = 
+util
+ . 
+eval_dicts
+ ( 
+data_dict
+ , 
+preds
+ )
+
+185 
+results_list
+ = [ ( 'F1' , 
+results
+ [ 'F1' ] ) ,
+
+186 ( 'EM' , 
+results
+ [ 'EM' ] ) ]
+
+188 
+results_list
+ = [ ( 'F1' , - 1.0 ) ,
+
+190 
+results
+ = 
+OrderedDict
+ ( 
+results_list
+ )
+
+191 if 
+return_preds
+ :
+
+192 return 
+preds
+ , 
+results
+
+193 return 
+results
+ 
+	}
+
+195 def 
+	$train
+ ( 
+self
+ , 
+model
+ , 
+train_dataloader
+ , 
+eval_dataloader
+ , 
+val_dict
+ ) :
+
+196 
+device
+ = 
+self
+ . 
+device
+
+197 
+model
+ . 
+to
+ ( 
+device
+ )
+
+198 
+optim
+ = 
+AdamW
+ ( 
+model
+ . 
+parameters
+ ( ) , 
+lr
+ = 
+self
+ . 
+lr
+ )
+
+199 
+global_idx
+ = 0
+
+200 
+best_scores
+ = { 'F1' : - 1.0 , 'EM' : - 1.0 }
+
+201 
+tbx
+ = 
+SummaryWriter
+ ( 
+self
+ . 
+save_dir
+ )
+
+203 for 
+epoch_num
+ in 
+range
+ ( 
+self
+ . 
+num_epochs
+ ) :
+
+204 
+self
+ . 
+log
+ . 
+info
+ ( f'Epoch: {epoch_num}' )
+
+205 with 
+torch
+ . 
+enable_grad
+ ( ) , 
+tqdm
+ ( 
+total
+ = 
+len
+ ( 
+train_dataloader
+ . 
+dataset
+ ) ) as 
+progress_bar
+ :
+
+206 for 
+batch
+ in 
+train_dataloader
+ :
+
+207 
+optim
+ . 
+zero_grad
+ ( )
+
+208 
+model
+ . 
+train
+ ( )
+
+209 
+input_ids
+ = 
+batch
+ [ 'input_ids' ] . 
+to
+ ( 
+device
+ )
+
+210 
+attention_mask
+ = 
+batch
+ [ 'attention_mask' ] . 
+to
+ ( 
+device
+ )
+
+211 
+start_positions
+ = 
+batch
+ [ 'start_positions' ] . 
+to
+ ( 
+device
+ )
+
+212 
+end_positions
+ = 
+batch
+ [ 'end_positions' ] . 
+to
+ ( 
+device
+ )
+
+213 
+outputs
+ = 
+model
+ ( 
+input_ids
+ , 
+attention_mask
+ = 
+attention_mask
+ ,
+
+214 
+start_positions
+ = 
+start_positions
+ ,
+
+215 
+end_positions
+ = 
+end_positions
+ )
+
+216 
+loss
+ = 
+outputs
+ [ 0 ]
+
+217 
+loss
+ . 
+backward
+ ( )
+
+218 
+optim
+ . 
+step
+ ( )
+
+219 
+progress_bar
+ . 
+update
+ ( 
+len
+ ( 
+input_ids
+ ) )
+
+220 
+progress_bar
+ . 
+set_postfix
+ ( 
+epoch
+ = 
+epoch_num
+ , 
+NLL
+ = 
+loss
+ . 
+item
+ ( ) )
+
+221 
+tbx
+ . 
+add_scalar
+ ( 'train/NLL' , 
+loss
+ . 
+item
+ ( ) , 
+global_idx
+ )
+
+222 if ( 
+global_idx
+ % 
+self
+ . 
+eval_every
+ ) == 0 :
+
+223 
+self
+ . 
+log
+ . 
+info
+ ( f'Evaluating at step {global_idx}...' )
+
+224 
+preds
+ , 
+curr_score
+ = 
+self
+ . 
+evaluate
+ ( 
+model
+ , 
+eval_dataloader
+ , 
+val_dict
+ , 
+return_preds
+ = True )
+
+225 
+results_str
+ = ', ' . 
+join
+ ( f'{k}: {v:05.2f}' for 
+k
+ , 
+v
+ in 
+curr_score
+ . 
+items
+ ( ) )
+
+226 
+self
+ . 
+log
+ . 
+info
+ ( 'Visualizing in TensorBoard...' )
+
+227 for 
+k
+ , 
+v
+ in 
+curr_score
+ . 
+items
+ ( ) :
+
+228 
+tbx
+ . 
+add_scalar
+ ( f'val/{k}' , 
+v
+ , 
+global_idx
+ )
+
+229 
+self
+ . 
+log
+ . 
+info
+ ( f'Eval {results_str}' )
+
+230 if 
+self
+ . 
+visualize_predictions
+ :
+
+231 
+util
+ . 
+visualize
+ ( 
+tbx
+ ,
+
+232 
+pred_dict
+ = 
+preds
+ ,
+
+233 
+gold_dict
+ = 
+val_dict
+ ,
+
+234 
+step
+ = 
+global_idx
+ ,
+
+235 
+split
+ = 'val' ,
+
+236 
+num_visuals
+ = 
+self
+ . 
+num_visuals
+ )
+
+237 if 
+curr_score
+ [ 'F1' ] >= 
+best_scores
+ [ 'F1' ] :
+
+238 
+best_scores
+ = 
+curr_score
+
+239 
+self
+ . 
+save
+ ( 
+model
+ )
+
+240 
+global_idx
+ += 1
+
+241 return 
+best_scores
+ 
+	}
+
+243 def 
+	$get_dataset
+ ( 
+args
+ , 
+datasets
+ , 
+data_dir
+ , 
+tokenizer
+ , 
+split_name
+ ) :
+
+244 
+datasets
+ = 
+datasets
+ . 
+split
+ ( ',' )
+
+245 
+dataset_dict
+ = None
+
+246 
+dataset_name
+ = ''
+
+247 for 
+dataset
+ in 
+datasets
+ :
+
+248 
+dataset_name
+ += f'_{dataset}'
+
+249 
+dataset_dict_curr
+ = 
+util
+ . 
+read_squad
+ ( f'{data_dir}/{dataset}' )
+
+250 
+dataset_dict
+ = 
+util
+ . 
+merge
+ ( 
+dataset_dict
+ , 
+dataset_dict_curr
+ )
+
+251 
+data_encodings
+ = 
+read_and_process
+ ( 
+args
+ , 
+tokenizer
+ , 
+dataset_dict
+ , 
+data_dir
+ , 
+dataset_name
+ , 
+split_name
+ ) """\n    At this stage, encodings is of the following form\n        KEYS=dict_keys(['input_ids', 'attention_mask', 'offset_mapping', 'overflow_to_sample_mapping', 'start_positions', 'end_positions', 'id'])\n    The keys attention_mask, offset_mapping, overflow_to_sample_mapping have been added by read_and_process()\n    sample:\n    {\n        'question':\n        [\n            'What sits on top of the Main Building at Notre Dame?'\n        ],\n        'context':\n        [\n            'Architecturally, the school has a Catholic character. Atop the Main Building\'s gold dome is a golden statue of the Virgin Mary. Immediately in front of the Main Building and facing it, is a copper statue of Christ with arms upraised with the legend "Venite Ad Me Omnes". Next to the Main Building is the Basilica of the Sacred Heart. Immediately behind the basilica is the Grotto, a Marian place of prayer and reflection. It is a replica of the grotto at Lourdes, France where the Virgin Mary reputedly appeared to Saint Bernadette Soubirous in 1858. At the end of the main drive (and in a direct line that connects through 3 statues and the Gold Dome), is a simple, modern stone statue of Mary.'\n        ],\n        'id': ['1c969af40a3248eb87a6d8c9c7c8d4ad'],\n        'answer':\n        [\n            {\n                'answer_start': [92],\n                'text': ['a golden statue of the Virgin Mary']\n            }\n        ]\n    }\n    """
+
+278 return 
+util
+ . 
+QADataset
+ ( 
+data_encodings
+ , 
+train
+ = ( 
+split_name
+ == 'train' ) ) , 
+dataset_dict
+ 
+	}
+
+280 def 
+	$main
+ ( ) :
+
+282 
+args
+ = 
+get_train_test_args
+ ( )
+
+284 
+util
+ . 
+set_seed
+ ( 
+args
+ . 
+seed
+ )
+
+285 
+model
+ = 
+DistilBertForQuestionAnswering
+ . 
+from_pretrained
+ ( "distilbert-base-uncased" )
+
+286 
+tokenizer
+ = 
+DistilBertTokenizerFast
+ . 
+from_pretrained
+ ( 'distilbert-base-uncased' )
+
+288 if 
+args
+ . 
+do_train
+ :
+
+289 if not 
+os
+ . 
+path
+ . 
+exists
+ ( 
+args
+ . 
+save_dir
+ ) :
+
+290 
+os
+ . 
+makedirs
+ ( 
+args
+ . 
+save_dir
+ )
+
+291 
+args
+ . 
+save_dir
+ = 
+util
+ . 
+get_save_dir
+ ( 
+args
+ . 
+save_dir
+ , 
+args
+ . 
+run_name
+ )
+
+292 
+log
+ = 
+util
+ . 
+get_logger
+ ( 
+args
+ . 
+save_dir
+ , 'log_train' )
+
+293 
+log
+ . 
+info
+ ( f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}' )
+
+294 
+log
+ . 
+info
+ ( "Preparing Training Data..." )
+
+295 
+args
+ . 
+device
+ = 
+torch
+ . 
+device
+ ( 'cuda' ) if 
+torch
+ . 
+cuda
+ . 
+is_available
+ ( ) else 
+torch
+ . 
+device
+ ( 'cpu' )
+
+296 if 
+torch
+ . 
+cuda
+ . 
+is_available
+ ( ) :
+
+297 
+print
+ ( "cuda is available" )
+
+299 
+print
+ ( "cuda is not available" )
+
+300 
+trainer
+ = 
+Trainer
+ ( 
+args
+ , 
+log
+ )
+
+301 
+train_dataset
+ , 
+_
+ = 
+get_dataset
+ ( 
+args
+ , 
+args
+ . 
+train_datasets
+ , 
+args
+ . 
+train_dir
+ , 
+tokenizer
+ , 'train' )
+
+302 
+log
+ . 
+info
+ ( "Preparing Validation Data..." )
+
+303 
+val_dataset
+ , 
+val_dict
+ = 
+get_dataset
+ ( 
+args
+ , 
+args
+ . 
+train_datasets
+ , 
+args
+ . 
+val_dir
+ , 
+tokenizer
+ , 'val' )
+
+304 
+train_loader
+ = 
+DataLoader
+ ( 
+train_dataset
+ ,
+
+305 
+batch_size
+ = 
+args
+ . 
+batch_size
+ ,
+
+306 
+sampler
+ = 
+RandomSampler
+ ( 
+train_dataset
+ ) )
+
+307 
+val_loader
+ = 
+DataLoader
+ ( 
+val_dataset
+ ,
+
+308 
+batch_size
+ = 
+args
+ . 
+batch_size
+ ,
+
+309 
+sampler
+ = 
+SequentialSampler
+ ( 
+val_dataset
+ ) )
+
+310 
+best_scores
+ = 
+trainer
+ . 
+train
+ ( 
+model
+ , 
+train_loader
+ , 
+val_loader
+ , 
+val_dict
+ )
+
+311 if 
+args
+ . 
+do_eval
+ :
+
+312 
+args
+ . 
+device
+ = 
+torch
+ . 
+device
+ ( 'cuda' ) if 
+torch
+ . 
+cuda
+ . 
+is_available
+ ( ) else 
+torch
+ . 
+device
+ ( 'cpu' )
+
+313 
+split_name
+ = 'test' if 'test' in 
+args
+ . 
+eval_dir
+ else 'validation'
+
+314 
+log
+ = 
+util
+ . 
+get_logger
+ ( 
+args
+ . 
+save_dir
+ , f'log_{split_name}' )
+
+315 
+trainer
+ = 
+Trainer
+ ( 
+args
+ , 
+log
+ )
+
+316 
+checkpoint_path
+ = 
+os
+ . 
+path
+ . 
+join
+ ( 
+args
+ . 
+save_dir
+ , 'checkpoint' )
+
+317 
+model
+ = 
+DistilBertForQuestionAnswering
+ . 
+from_pretrained
+ ( 
+checkpoint_path
+ )
+
+318 
+model
+ . 
+to
+ ( 
+args
+ . 
+device
+ )
+
+319 
+eval_dataset
+ , 
+eval_dict
+ = 
+get_dataset
+ ( 
+args
+ , 
+args
+ . 
+eval_datasets
+ , 
+args
+ . 
+eval_dir
+ , 
+tokenizer
+ , 
+split_name
+ )
+
+320 
+eval_loader
+ = 
+DataLoader
+ ( 
+eval_dataset
+ ,
+
+321 
+batch_size
+ = 
+args
+ . 
+batch_size
+ ,
+
+322 
+sampler
+ = 
+SequentialSampler
+ ( 
+eval_dataset
+ ) )
+
+323 
+eval_preds
+ , 
+eval_scores
+ = 
+trainer
+ . 
+evaluate
+ ( 
+model
+ , 
+eval_loader
+ ,
+
+324 
+eval_dict
+ , 
+return_preds
+ = True ,
+
+325 
+split
+ = 
+split_name
+ )
+
+326 
+results_str
+ = ', ' . 
+join
+ ( f'{k}: {v:05.2f}' for 
+k
+ , 
+v
+ in 
+eval_scores
+ . 
+items
+ ( ) )
+
+327 
+log
+ . 
+info
+ ( f'Eval {results_str}' )
+
+329 
+sub_path
+ = 
+os
+ . 
+path
+ . 
+join
+ ( 
+args
+ . 
+save_dir
+ , 
+split_name
+ + '_' + 
+args
+ . 
+sub_file
+ )
+
+330 
+log
+ . 
+info
+ ( f'Writing submission file to {sub_path}...' )
+
+331 with 
+open
+ ( 
+sub_path
+ , 'w' , 
+newline
+ = '' , 
+encoding
+ = 'utf-8' ) as 
+csv_fh
+ :
+
+332 
+csv_writer
+ = 
+csv
+ . 
+writer
+ ( 
+csv_fh
+ , 
+delimiter
+ = ',' )
+
+333 
+csv_writer
+ . 
+writerow
+ ( [ 'Id' , 'Predicted' ] )
+
+334 for 
+uuid
+ in 
+sorted
+ ( 
+eval_preds
+ ) :
+
+335 
+csv_writer
+ . 
+writerow
+ ( [ 
+uuid
+ , 
+eval_preds
+ [ 
+uuid
+ ] ] ) 
+	}
+
+338 if 
+__name__
+ == '__main__' :
+
+339 
+main
+ ( )
+
+
+	@./args.py
+
+1 import 
+	~argparse
+
+3 def 
+	$get_train_test_args
+ ( ) :
+
+4 
+parser
+ = 
+argparse
+ . 
+ArgumentParser
+ ( )
+
+5 
+parser
+ . 
+add_argument
+ ( '--batch-size' , 
+type
+ = 
+int
+ , 
+default
+ = 16 )
+
+6 
+parser
+ . 
+add_argument
+ ( '--num-epochs' , 
+type
+ = 
+int
+ , 
+default
+ = 3 )
+
+7 
+parser
+ . 
+add_argument
+ ( '--lr' , 
+type
+ = 
+float
+ , 
+default
+ = 3e-5 )
+
+8 
+parser
+ . 
+add_argument
+ ( '--num-visuals' , 
+type
+ = 
+int
+ , 
+default
+ = 10 )
+
+9 
+parser
+ . 
+add_argument
+ ( '--seed' , 
+type
+ = 
+int
+ , 
+default
+ = 42 )
+
+10 
+parser
+ . 
+add_argument
+ ( '--save-dir' , 
+type
+ = 
+str
+ , 
+default
+ = 'save/' )
+
+11 
+parser
+ . 
+add_argument
+ ( '--train' , 
+action
+ = 'store_true' )
+
+12 
+parser
+ . 
+add_argument
+ ( '--eval' , 
+action
+ = 'store_true' )
+
+13 
+parser
+ . 
+add_argument
+ ( '--train-datasets' , 
+type
+ = 
+str
+ , 
+default
+ = 'squad,nat_questions,newsqa' )
+
+14 
+parser
+ . 
+add_argument
+ ( '--run-name' , 
+type
+ = 
+str
+ , 
+default
+ = 'multitask_distilbert' )
+
+15 
+parser
+ . 
+add_argument
+ ( '--recompute-features' , 
+action
+ = 'store_true' )
+
+16 
+parser
+ . 
+add_argument
+ ( '--train-dir' , 
+type
+ = 
+str
+ , 
+default
+ = 'datasets/indomain_train' )
+
+17 
+parser
+ . 
+add_argument
+ ( '--val-dir' , 
+type
+ = 
+str
+ , 
+default
+ = 'datasets/indomain_val' )
+
+18 
+parser
+ . 
+add_argument
+ ( '--eval-dir' , 
+type
+ = 
+str
+ , 
+default
+ = 'datasets/oodomain_test' )
+
+19 
+parser
+ . 
+add_argument
+ ( '--eval-datasets' , 
+type
+ = 
+str
+ , 
+default
+ = 'race,relation_extraction,duorc' )
+
+20 
+parser
+ . 
+add_argument
+ ( '--do-train' , 
+action
+ = 'store_true' )
+
+21 
+parser
+ . 
+add_argument
+ ( '--do-eval' , 
+action
+ = 'store_true' )
+
+22 
+parser
+ . 
+add_argument
+ ( '--sub-file' , 
+type
+ = 
+str
+ , 
+default
+ = '' )
+
+23 
+parser
+ . 
+add_argument
+ ( '--visualize-predictions' , 
+action
+ = 'store_true' )
+
+24 
+parser
+ . 
+add_argument
+ ( '--eval-every' , 
+type
+ = 
+int
+ , 
+default
+ = 5000 )
+
+25 
+args
+ = 
+parser
+ . 
+parse_args
+ ( )
+
+26 return 
+args
+ 
+	}
+
+
+	@
+1
+.
+0
+4
+53
+./convert_to_squad.py
+./util.py
+./train.py
+./args.py
