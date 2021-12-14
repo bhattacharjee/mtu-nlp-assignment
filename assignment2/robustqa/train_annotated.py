@@ -17,6 +17,10 @@ from args import get_train_test_args
 
 from tqdm import tqdm
 
+# Bert SQUAD interpretation can be found here with some more explanations
+# https://captum.ai/tutorials/Bert_SQUAD_Interpret
+# https://captum.ai/tutorials/Bert_SQUAD_Interpret2
+
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
                                    dataset_dict['context'],
@@ -96,7 +100,11 @@ def prepare_train_data(dataset_dict, tokenizer):
     # Loop through offset mapping, each offset
     for i, offsets in enumerate(tqdm(offset_mapping)):
         # We will label impossible answers with the index of the CLS token.
+
+        # tokenized_examples['input_ids'] is the list of token
+        # ids to be fed into the model
         input_ids = tokenized_examples["input_ids"][i]
+
         cls_index = input_ids.index(tokenizer.cls_token_id)
 
         # Grab the sequence corresponding to that example (to know what is the context and what is the question).
