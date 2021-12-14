@@ -20,6 +20,9 @@ from tqdm import tqdm
 # Bert SQUAD interpretation can be found here with some more explanations
 # https://captum.ai/tutorials/Bert_SQUAD_Interpret
 # https://captum.ai/tutorials/Bert_SQUAD_Interpret2
+#
+# A less readable reference is below:
+# https://github.com/huggingface/transformers#run_squadpy-fine-tuning-on-squad-for-question-answering
 
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
