@@ -24,6 +24,9 @@ from tqdm import tqdm
 # A less readable reference is below:
 # https://github.com/huggingface/transformers#run_squadpy-fine-tuning-on-squad-for-question-answering
 
+# Some more documentation available here, but I'm not able to make much sense out of it
+# https://huggingface.co/docs/transformers/master/en/main_classes/tokenizer#transformers.BatchEncoding
+
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
                                    dataset_dict['context'],
