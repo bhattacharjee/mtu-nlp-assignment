@@ -41,6 +41,9 @@ from tqdm import tqdm
 # applying attention. The authors, however, opt to go with a much simpler
 # method: simply taking the hidden state corresponding to the first token.
 
+# A more spoon-feeding video is here
+# https://www.youtube.com/watch?v=3XiJrn_8F9Q
+
 To make this pooling scheme work, BERT prepends a [CLS] token (short for “classification”) to the start of each sentence (this is essentially like a start-of-sentence token).
 
 def prepare_eval_data(dataset_dict, tokenizer):
