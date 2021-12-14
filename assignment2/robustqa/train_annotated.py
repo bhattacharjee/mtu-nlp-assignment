@@ -54,7 +54,7 @@ def prepare_train_data(dataset_dict, tokenizer):
     # Refer here for the documentation for DilstilBertTokenizerFast::tokenize
     # https://huggingface.co/docs/transformers/master/en/main_classes/tokenizer#transformers.PreTrainedTokenizerBase.__call__
     # 
-    # Of importance are two parameters
+    # Of importance, are two parameters:
     # text : str, List[str] or List[List[str]]
     # text_pair : str, List[str] or List[List[str]] (optional)
     #
@@ -72,14 +72,28 @@ def prepare_train_data(dataset_dict, tokenizer):
                                    return_overflowing_tokens=True,
                                    return_offsets_mapping=True,
                                    padding='max_length')
+    # (Pdb) print(type(tokenized_examples))
+    # <class 'transformers.tokenization_utils_base.BatchEncoding'>
+    # (Pdb) print(tokenized_examples.keys())
+    # dict_keys(['input_ids', 'attention_mask', 'offset_mapping', 'overflow_to_sample_mapping'])
+
     sample_mapping = tokenized_examples["overflow_to_sample_mapping"]
+    # (Pdb) print(sample_mapping[:5])
+    # [0, 1, 2, 3, 4]
+
     offset_mapping = tokenized_examples["offset_mapping"]
+    # (Pdb) print(offset_mapping[0])
+    # [(0, 0), (0, 4), (5, 9), (10, 12), ...
+    #
+    # the above are the start and end indices of every token
 
     # Let's label those examples!
     tokenized_examples["start_positions"] = []
     tokenized_examples["end_positions"] = []
     tokenized_examples['id'] = []
     inaccurate = 0
+
+    # Loop through offset mapping, each offset
     for i, offsets in enumerate(tqdm(offset_mapping)):
         # We will label impossible answers with the index of the CLS token.
         input_ids = tokenized_examples["input_ids"][i]
