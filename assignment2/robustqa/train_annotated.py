@@ -27,6 +27,9 @@ from tqdm import tqdm
 # Some more documentation available here, but I'm not able to make much sense out of it
 # https://huggingface.co/docs/transformers/master/en/main_classes/tokenizer#transformers.BatchEncoding
 
+# Some of the jargon is explained in this video, and an overview
+# https://www.youtube.com/watch?v=l8ZYCvgGu0o
+
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
                                    dataset_dict['context'],
