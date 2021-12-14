@@ -17,6 +17,11 @@ from args import get_train_test_args
 
 from tqdm import tqdm
 
+# **************************************************************
+# *    THE ORIGINAL CODE IS BASED ON THIS EXAMPLE              *
+# *    https://mlwhiz.com/blog/2021/07/24/huggingface-bert/    *
+# **************************************************************
+
 # Bert SQUAD interpretation can be found here with some more explanations
 # https://captum.ai/tutorials/Bert_SQUAD_Interpret
 # https://captum.ai/tutorials/Bert_SQUAD_Interpret2
