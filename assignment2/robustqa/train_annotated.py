@@ -30,6 +30,19 @@ from tqdm import tqdm
 # Some of the jargon is explained in this video, and an overview
 # https://www.youtube.com/watch?v=l8ZYCvgGu0o
 
+# For the CLS token, this is text taken from the following blog:
+#
+# https://datasciencetoday.net/index.php/en-us/nlp/211-paper-dissected-bert-pre-training-of-deep-bidirectional-transformers-for-language-understanding-explained
+#
+# As I mentioned earlier, the BERT encoder produces a sequence of hidden states. 
+# For classification tasks, this sequence ultimately needs to be reduced to a
+# single vector. There are multiple ways of converting this sequence to a single 
+# vector representation of a sentence. One is max/mean pooling. Another is 
+# applying attention. The authors, however, opt to go with a much simpler
+# method: simply taking the hidden state corresponding to the first token.
+
+To make this pooling scheme work, BERT prepends a [CLS] token (short for “classification”) to the start of each sentence (this is essentially like a start-of-sentence token).
+
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
                                    dataset_dict['context'],
