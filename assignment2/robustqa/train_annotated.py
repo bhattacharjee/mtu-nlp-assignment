@@ -49,7 +49,9 @@ from tqdm import tqdm
 # A more spoon-feeding video is here
 # https://www.youtube.com/watch?v=3XiJrn_8F9Q
 
-To make this pooling scheme work, BERT prepends a [CLS] token (short for “classification”) to the start of each sentence (this is essentially like a start-of-sentence token).
+# To make this pooling scheme work, BERT prepends a [CLS] token 
+# (short for “classification”) to the start of each sentence 
+# (this is essentially like a start-of-sentence token).
 
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
