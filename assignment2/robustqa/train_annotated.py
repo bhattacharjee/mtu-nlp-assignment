@@ -53,6 +53,11 @@ from tqdm import tqdm
 # (short for “classification”) to the start of each sentence 
 # (this is essentially like a start-of-sentence token).
 
+# ********************************
+# Best discussion on special tokens
+# https://www.youtube.com/watch?v=x66kkDnbzi4
+# ********************************
+
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
                                    dataset_dict['context'],
