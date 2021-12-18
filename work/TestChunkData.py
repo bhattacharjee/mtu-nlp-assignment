@@ -8,7 +8,7 @@ import json
 import random
 from tqdm import tqdm
 
-from ChunkDataWriter import *
+from ChunkData import *
 
 class TestChunkDataWriter(unittest.TestCase):
     thepath = "/tmp/1/2"
