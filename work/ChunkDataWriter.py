@@ -63,7 +63,7 @@ class ChunkDataWriter():
             if -1 == self.current_slice_start:
                 return None
             st = self.current_slice_start
-            en = st + self.chunk_size
+            en = st + self.chunk_size - 1
             return f"{self.directory}/array_chunk-{st:08d}-{en:08d}.pickle"
 
     def get_conf_file_name(self):
@@ -85,6 +85,11 @@ class ChunkDataWriter():
 
     def append(self, x):
         with self.lock:
+            if 0 == len(self.current_slice) % self.chunk_size:
+                self.current_slice = list()
+                if self.current_slice_start != -1:
+                    self.current_slice_start += self.chunk_size
+
             if self.current_slice_start == -1:
                 self.current_slice_start = 0
             self.length += 1

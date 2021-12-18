@@ -63,6 +63,22 @@ class TestChunkDataWriter(unittest.TestCase):
         file_list = glob.glob(f"{TestChunkDataWriter.thepath}/*.json")
         self.assertEqual(len(file_list), 1, "No json conf created")
 
+    def test_write_one_more_than_chunk_size(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+            directory=TestChunkDataWriter.thepath,\
+            chunk_size=TestChunkDataWriter.chunk_size)
+        for i in range(TestChunkDataWriter.chunk_size + 1):
+            c.append(i)
+            #print(i, len(c.current_slice), c.get_current_file_name())
+        # Test that a pickle file is created
+        file_list = glob.glob(f"{TestChunkDataWriter.thepath}/*.pickle")
+        self.assertEqual(len(file_list), 2, "pickle file count mismatch")
+
+        # Test that a json file describing the item is created
+        file_list = glob.glob(f"{TestChunkDataWriter.thepath}/*.json")
+        self.assertEqual(len(file_list), 1, "No json conf created")
 
 
 
