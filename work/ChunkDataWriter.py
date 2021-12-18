@@ -91,6 +91,7 @@ class ChunkDataWriter(ChunkDataCommon):
         with self.lock:
             thedict = {}
             thedict["length"] = self.length
+            #print("Exists?", os.path.exists(self.directory))
             with open(self.get_conf_file_name(), "w") as f:
                 json.dump(thedict, f)
 
@@ -108,8 +109,12 @@ class ChunkDataWriter(ChunkDataCommon):
             self.write_conf()
         pass
 
+    def __del__(self):
+        with self.lock:
+            self.write_conf()
+
     def __len__(self):
-        return self.length
+        return self.length if self.length >= 0 else 0
 
 
 
@@ -118,11 +123,38 @@ class ChunkDataReader(ChunkDataCommon):
         super(self.__class__, self).__init__(directory, chunk_size)
         self.lock = threading.RLock()
         self.length = -1
+        self.current_slice = None
+        self.current_slice_start = -1
 
         with open(self.get_conf_file_name(), "r") as f:
             conf = json.load(f)
-            self.length = conf['length']
+            length = conf['length']
+            self.length = length if length > 0 else -1
 
     def __len__(self):
-        return self.length
+        return self.length if self.length > 0 else 0
+
+    def load_slice(self, ind_start):
+        with self.lock:
+            ind_end = ind_start + self.chunk_size - 1
+            filename =self.get_pickle_file_name(ind_start, ind_end)
+            with open(filename, "rb") as f:
+                self.current_slice = pickle.load(f)
+                self.current_slice_start = ind_start
+                return
+            self.current_slice = None
+            self.current_slice_start = -1
+            raise IndexError
+
+    def __getitem__(self, ind):
+        if ind >= self.length:
+            raise IndexError
+
+        with self.lock:
+            ind_start = self.get_slice_start_for_index(ind)
+            if ind_start != self.current_slice_start:
+                self.load_slice(ind_start)
+            ind = ind - self.current_slice_start
+            return self.current_slice[ind]
+
 

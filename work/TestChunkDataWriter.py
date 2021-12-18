@@ -5,9 +5,10 @@ import shutil
 import pathlib
 import glob
 import json
+import random
+from tqdm import tqdm
 
 from ChunkDataWriter import *
-from tqdm import tqdm
 
 class TestChunkDataWriter(unittest.TestCase):
     thepath = "/tmp/1/2"
@@ -126,8 +127,35 @@ class TestChunkDataWriter(unittest.TestCase):
             c = ChunkDataReader(thepath, chunk_size)
             self.assertEqual(len(c), length, "Length does not match")
 
-        insert(5_000, 3)
-        check_length(5_000, 3)
+        def check_serial_read(length, added):
+            c = ChunkDataReader(thepath, chunk_size)
+            self.assertEqual(c[0], added, "Failed to fetch array[0]")
+            for i in tqdm(range(length), "checking all items"):
+                self.assertEqual(c[i], i + added, f"element {i} does not match")
+
+        def check_random_read(length, added):
+            c = ChunkDataReader(thepath, chunk_size)
+            indices = [i for i in range(length)]
+            random.shuffle(indices)
+            for i in tqdm(indices, "checking all items in random order"):
+                self.assertEqual(c[i], i + added, f"element {i} does not match")
+
+
+        def do_all_checks(length, added):
+            insert(length, added)
+            check_length(length, added)
+            if length > 0:
+                check_serial_read(length, added)
+            check_random_read(length, added)
+
+        do_all_checks(0, 3)
+        do_all_checks(5000, 3)
+        do_all_checks(chunk_size - 1, 4)
+        do_all_checks(chunk_size + 1, 4)
+        do_all_checks(chunk_size, 4)
+        do_all_checks(chunk_size * 500 - 1, 4)
+        do_all_checks(chunk_size * 500 + 1, 4)
+        do_all_checks(chunk_size * 500, 4)
 
 
 if "__main__" == __name__:
