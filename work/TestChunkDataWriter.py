@@ -95,6 +95,17 @@ class TestChunkDataWriter(unittest.TestCase):
         self.assertEqual(conf['length'], TestChunkDataWriter.chunk_size + 1,\
             "config has the wrong length")
 
+    def generic_tests(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+            directory=TestChunkDataWriter.thepath,\
+            chunk_size=TestChunkDataWriter.chunk_size)
+        self.assertEqual(c.get_slice_start_for_index(0), 0)
+        self.assertEqual(c.get_slice_start_for_index(1), 1)
+        self.assertEqual(\
+            c.get_slice_start_for_index(TestChunkDataWriter.chunk_size),\
+            TestChunkDataWriter.chunk_size)
 
 
 

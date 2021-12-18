@@ -8,13 +8,28 @@ import json
 
 import threading
 
-class ChunkDataWriter():
+class ChunkDataCommon():
+    def __init__(self, directory:str, chunk_size=16):
+        self.directory = directory
+        self.chunk_size = chunk_size
+
+    def get_pickle_file_name(self, st, en):
+        return f"{self.directory}/array_chunk-{st:08d}-{en:08d}.pickle"
+
+    def get_conf_file_name(self):
+        with self.lock:
+            return f"{self.directory}/config.json"
+
+    def get_slice_start_for_index(self, ind):
+        return (ind // self.chunk_size) * self.chunk_size
+
+
+class ChunkDataWriter(ChunkDataCommon):
     """Uses pickle, but splits into multiple files.
     behaves like an array and supports the append() method,
     and finalize method()"""
     def __init__(self, directory:str, chunk_size=16):
-        self.directory = directory
-        self.chunk_size = chunk_size
+        super(self.__class__, self).__init__(directory, chunk_size)
         self.lock = threading.RLock()
 
         # the current slice of the array
@@ -64,11 +79,7 @@ class ChunkDataWriter():
                 return None
             st = self.current_slice_start
             en = st + self.chunk_size - 1
-            return f"{self.directory}/array_chunk-{st:08d}-{en:08d}.pickle"
-
-    def get_conf_file_name(self):
-        with self.lock:
-            return f"{self.directory}/config.json"
+            return self.get_pickle_file_name(st, en)
 
     def write_chunk(self):
         with self.lock:
@@ -101,3 +112,9 @@ class ChunkDataWriter():
         return self.length
 
 
+
+class ChunkDataReader():
+    def __init__(self, directory:str, chunk_size=16):
+        super(self.__class__, self).__init__(directory, chunk_size)
+        self.lock = threading.RLock()
+    pass
