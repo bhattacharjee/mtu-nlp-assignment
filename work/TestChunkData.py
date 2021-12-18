@@ -188,6 +188,28 @@ class TestChunkDataWriter(unittest.TestCase):
         c = ChunkDataReader(c)
         self.assertEqual(c[0], 5, "Failed to read correct element")
 
+    def test_negative_index(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        for i in range(11):
+            c.append(i)
+        c = ChunkDataReader(c)
+        self.assertEqual(c[-1], 10, "element at egative index doesn't match")
+        self.assertEqual(c[-2], 9, "element at egative index doesn't match")
+
+    def test_getitem_from_writer(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        for i in range(11):
+            c.append(i)
+        self.assertEqual(c[-1], 10, "element at egative index doesn't match")
+        self.assertEqual(c[-2], 9, "element at egative index doesn't match")
 
 
 

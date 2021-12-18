@@ -136,6 +136,10 @@ class ChunkDataWriter(ChunkDataCommon):
     def __len__(self):
         return self.length if self.length >= 0 else 0
 
+    def __getitem__(self, ind):
+        reader = ChunkDataReader(self)
+        return reader[ind]
+
 
 
 class ChunkDataReader(ChunkDataCommon):
@@ -179,7 +183,8 @@ class ChunkDataReader(ChunkDataCommon):
     def __getitem__(self, ind):
         if ind >= self.length:
             raise IndexError
-
+        if (ind < 0):
+            ind = self.length + ind 
         with self.lock:
             ind_start = self.get_slice_start_for_index(ind)
             if ind_start != self.current_slice_start:
