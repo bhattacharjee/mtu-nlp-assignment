@@ -87,7 +87,6 @@ class ChunkDataWriter():
         with self.lock:
             if self.current_slice_start == -1:
                 self.current_slice_start = 0
-
             self.length += 1
             self.current_slice.append(x)
             self.write_chunk()
