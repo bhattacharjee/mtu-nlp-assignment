@@ -139,12 +139,21 @@ class ChunkDataWriter(ChunkDataCommon):
 
 
 class ChunkDataReader(ChunkDataCommon):
-    def __init__(self, directory:str, chunk_size=16):
-        super(self.__class__, self).__init__(directory, chunk_size)
+    def __init__(self, d:str, chunk_size=16):
+        super(self.__class__, self).__init__(d, chunk_size=None)
+
+        if isinstance(d, str):
+            directory = d
+        elif isinstance(d, ChunkDataReader) or isinstance(d, ChunkDataWriter):
+            directory = d.directory
+            chunk_size = d.chunk_size
+
         self.lock = threading.RLock()
         self.length = -1
         self.current_slice = None
         self.current_slice_start = -1
+        self.chunk_size = chunk_size
+        self.directory = directory
 
         with open(self.get_conf_file_name(), "r") as f:
             conf = json.load(f)

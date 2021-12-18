@@ -170,13 +170,25 @@ class TestChunkDataWriter(unittest.TestCase):
             check_random_read(length, added)
 
         do_all_checks(0, 3)
-        do_all_checks(5000, 3)
+        do_all_checks(50, 3)
         do_all_checks(chunk_size - 1, 4)
         do_all_checks(chunk_size + 1, 4)
         do_all_checks(chunk_size, 4)
-        do_all_checks(chunk_size * 500 - 1, 4)
-        do_all_checks(chunk_size * 500 + 1, 4)
-        do_all_checks(chunk_size * 500, 4)
+        do_all_checks(chunk_size * 5 - 1, 4)
+        do_all_checks(chunk_size * 5 + 1, 4)
+        do_all_checks(chunk_size * 5, 4)
+
+    def test_alternate_reader_init(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        c.append(5)
+        c = ChunkDataReader(c)
+        self.assertEqual(c[0], 5, "Failed to read correct element")
+
+
 
 
 if "__main__" == __name__:
