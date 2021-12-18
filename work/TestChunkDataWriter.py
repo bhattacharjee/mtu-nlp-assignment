@@ -31,19 +31,21 @@ class TestChunkDataWriter(unittest.TestCase):
             chunk_size=TestChunkDataWriter.chunk_size)
         c.append(1)
 
+        st, end, mx = c.get_current_slice_offsets()
+        self.assertEqual(st, 0, "start offset should be zero")
+        self.assertEqual(end, 1, "end offset should be 1")
+        self.assertEqual(mx, TestChunkDataWriter.chunk_size - 1,\
+            "max should be {TestChunkDataWriter.chunk_size - 1}")
+        self.assertEqual(c.get_current_slice_size(), 1,\
+            "slice size should be 1")
+
         # Test that a pickle file is created
         file_list = glob.glob(f"{TestChunkDataWriter.thepath}/*.pickle")
         self.assertEqual(len(file_list), 1, "No pickle file created")
 
         # Test that a json file describing the item is created
         file_list = glob.glob(f"{TestChunkDataWriter.thepath}/*.json")
-        self.assertEqual(len(file_list), 1, "No json file created")
-
-        st, end, mx = c.get_current_slice_offsets()
-        assertEqual(st, 0, "start offset should be zero")
-        assertEqual(end, 1, "end offset should be 1")
-        assertEqual(mx, TestChunkDataWriter.chunk_size - 1,\
-            "max should be {TestChunkDataWriter.chunk_size - 1}")
+        self.assertEqual(len(file_list), 1, "No json conf created")
 
 
 

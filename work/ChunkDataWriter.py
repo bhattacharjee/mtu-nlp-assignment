@@ -3,6 +3,8 @@
 import os
 import shutil
 import pathlib
+import pickle
+import json
 
 import threading
 
@@ -19,7 +21,7 @@ class ChunkDataWriter():
         self.current_slice = list()
 
         # Length of all items
-        self.max_length = 0
+        self.length = 0
 
         # Where does the current slice start from
         self.current_slice_start = -1
@@ -31,36 +33,68 @@ class ChunkDataWriter():
     def get_current_slice_max(self):
         # Return the index of the last element that can
         # be stored in the current slice
-        if self.current_slice_start == -1:
-            return -1
-        else:
-            return self.current_slice_start + self.chunk_size - 1
+        with self.lock:
+            if self.current_slice_start == -1:
+                return -1
+            else:
+                return self.current_slice_start + self.chunk_size - 1
 
     def get_current_slice_end(self):
-        if self.current_slice_start == -1:
-            return -1
-        else:
-            return self.current_slice_start + len(self.current_slice)
+        # Return the end of the current slice
+        with self.lock:
+            if self.current_slice_start == -1:
+                return -1
+            else:
+                return self.current_slice_start + len(self.current_slice)
 
     def get_current_slice_size(self):
-        return len(self.current_slice)
+        # return the size of the current slice
+        with self.lock:
+            return len(self.current_slice)
 
     def get_current_slice_offsets(self):
-        return self.current_slice_start, \
-            self.get_current_slice_end(), \
-            self.get_current_slice_max()
+        with self.lock:
+            return self.current_slice_start, \
+                self.get_current_slice_end(), \
+                self.get_current_slice_max()
+
+    def get_current_file_name(self):
+        with self.lock:
+            if -1 == self.current_slice_start:
+                return None
+            st = self.current_slice_start
+            en = st + self.chunk_size
+            return f"{self.directory}/array_chunk-{st:08d}-{en:08d}.pickle"
+
+    def get_conf_file_name(self):
+        with self.lock:
+            return f"{self.directory}/config.json"
+
+    def write_chunk(self):
+        with self.lock:
+            with open(self.get_current_file_name(), "wb") as f:
+                pickle.dump(self.current_slice, f, pickle.HIGHEST_PROTOCOL)
+
+
+    def write_conf(self):
+        with self.lock:
+            thedict = {}
+            thedict["length"] = self.length
+            with open(self.get_conf_file_name(), "w") as f:
+                json.dump(thedict, f)
 
     def append(self, x):
         with self.lock:
             if self.current_slice_start == -1:
                 self.current_slice_start = 0
 
-            self.max_length += 1
-
-
-
-
-
+            self.length += 1
+            self.current_slice.append(x)
+            self.write_chunk()
+            self.write_conf()
         pass
+
+    def __len__(self):
+        return self.length
 
 
