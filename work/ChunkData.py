@@ -43,6 +43,18 @@ class ChunkDataCommon():
     def get_slice_start_for_index(self, ind):
         return (ind // self.chunk_size) * self.chunk_size
 
+    def load_slice(self, ind_start):
+        with self.lock:
+            ind_end = ind_start + self.chunk_size - 1
+            filename =self.get_pickle_file_name(ind_start, ind_end)
+            with open(filename, "rb") as f:
+                self.current_slice = pickle.load(f)
+                self.current_slice_start = ind_start
+                return
+            self.current_slice = None
+            self.current_slice_start = -1
+            raise IndexError
+
 
 class ChunkDataWriter(ChunkDataCommon):
     """Uses pickle, but splits into multiple files.
@@ -64,6 +76,25 @@ class ChunkDataWriter(ChunkDataCommon):
 
         if not os.path.exists(self.directory):
             pathlib.Path(self.directory).mkdir(parents=True, exist_ok=False)
+
+        if os.path.exists(self.get_conf_file_name()):
+            self.load_existing()
+        else:
+            self.write_conf()
+
+    def load_existing(self):
+        with open(self.get_conf_file_name(), "r") as f:
+            d = json.load(f)
+            self.length = d['length']
+            self.length = self.length if self.length > 0 else 0
+            if self.length > 0:
+                ind_start = self.get_slice_start_for_index(self.length - 1)
+                self.load_slice(ind_start)
+                self.current_slice_start = ind_start
+
+    def finalize(self):
+        print(f"Finalize: {self.directory} - Length: {self.length}")
+        self.write_conf()
 
     def get_current_slice_max(self):
         # Return the index of the last element that can
@@ -137,7 +168,12 @@ class ChunkDataWriter(ChunkDataCommon):
         return self.length if self.length >= 0 else 0
 
     def __getitem__(self, ind):
-        reader = ChunkDataReader(self)
+        try:
+            print(self.length, self.directory)
+            reader = ChunkDataReader(self)
+        except Exception as e:
+            print(self.length, self.directory)
+            raise IndexError
         return reader[ind]
 
 
@@ -168,17 +204,6 @@ class ChunkDataReader(ChunkDataCommon):
     def __len__(self):
         return self.length if self.length > 0 else 0
 
-    def load_slice(self, ind_start):
-        with self.lock:
-            ind_end = ind_start + self.chunk_size - 1
-            filename =self.get_pickle_file_name(ind_start, ind_end)
-            with open(filename, "rb") as f:
-                self.current_slice = pickle.load(f)
-                self.current_slice_start = ind_start
-                return
-            self.current_slice = None
-            self.current_slice_start = -1
-            raise IndexError
 
     def __getitem__(self, ind):
         if ind >= self.length:
@@ -191,5 +216,6 @@ class ChunkDataReader(ChunkDataCommon):
                 self.load_slice(ind_start)
             ind = ind - self.current_slice_start
             return self.current_slice[ind]
+
 
 

@@ -211,6 +211,22 @@ class TestChunkDataWriter(unittest.TestCase):
         self.assertEqual(c[-1], 10, "element at egative index doesn't match")
         self.assertEqual(c[-2], 9, "element at egative index doesn't match")
 
+    def test_close_and_reopen_in_write_mode(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        for i in range(11):
+            c.append(i)
+        c = None
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        self.assertEqual(c.current_slice[0], 0)
+        self.assertEqual(c.current_slice[1], 1)
+
+
 
 
 if "__main__" == __name__:
