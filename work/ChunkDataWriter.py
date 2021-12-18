@@ -89,7 +89,6 @@ class ChunkDataWriter():
                 self.current_slice = list()
                 if self.current_slice_start != -1:
                     self.current_slice_start += self.chunk_size
-
             if self.current_slice_start == -1:
                 self.current_slice_start = 0
             self.length += 1

@@ -4,6 +4,7 @@ import unittest
 import shutil
 import pathlib
 import glob
+import json
 
 from ChunkDataWriter import *
 
@@ -79,6 +80,20 @@ class TestChunkDataWriter(unittest.TestCase):
         # Test that a json file describing the item is created
         file_list = glob.glob(f"{TestChunkDataWriter.thepath}/*.json")
         self.assertEqual(len(file_list), 1, "No json conf created")
+
+    def test_config_should_have_correct_length(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+            directory=TestChunkDataWriter.thepath,\
+            chunk_size=TestChunkDataWriter.chunk_size)
+        for i in range(TestChunkDataWriter.chunk_size + 1):
+            c.append(i)
+            #print(i, len(c.current_slice), c.get_current_file_name())
+        with open(f"{TestChunkDataWriter.thepath}/config.json", "r") as f:
+            conf = json.load(f)
+        self.assertEqual(conf['length'], TestChunkDataWriter.chunk_size + 1,\
+            "config has the wrong length")
 
 
 
