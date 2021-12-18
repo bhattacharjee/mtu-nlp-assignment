@@ -113,8 +113,16 @@ class ChunkDataWriter(ChunkDataCommon):
 
 
 
-class ChunkDataReader():
+class ChunkDataReader(ChunkDataCommon):
     def __init__(self, directory:str, chunk_size=16):
         super(self.__class__, self).__init__(directory, chunk_size)
         self.lock = threading.RLock()
-    pass
+        self.length = -1
+
+        with open(self.get_conf_file_name(), "r") as f:
+            conf = json.load(f)
+            self.length = conf['length']
+
+    def __len__(self):
+        return self.length
+

@@ -7,6 +7,7 @@ import glob
 import json
 
 from ChunkDataWriter import *
+from tqdm import tqdm
 
 class TestChunkDataWriter(unittest.TestCase):
     thepath = "/tmp/1/2"
@@ -107,6 +108,26 @@ class TestChunkDataWriter(unittest.TestCase):
             c.get_slice_start_for_index(TestChunkDataWriter.chunk_size),\
             TestChunkDataWriter.chunk_size)
 
+    def test_reader_reports_correct_length(self):
+        theparent   = TestChunkDataWriter.thepathparent
+        thepath     = TestChunkDataWriter.thepath
+        chunk_size  = TestChunkDataWriter.chunk_size
+
+        def insert(length, added):
+            if os.path.exists(theparent):
+                shutil.rmtree(theparent)
+            c = ChunkDataWriter(thepath, chunk_size)
+            arr = [i for i in range(length)]
+            for i in tqdm(arr, "Inserting into array"):
+                c.append(i+added)
+            self.assertEqual(len(c), length)
+
+        def check_length(length, added):
+            c = ChunkDataReader(thepath, chunk_size)
+            self.assertEqual(len(c), length, "Length does not match")
+
+        insert(5_000, 3)
+        check_length(5_000, 3)
 
 
 if "__main__" == __name__:
