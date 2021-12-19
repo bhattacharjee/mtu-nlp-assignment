@@ -27,6 +27,7 @@ import pickle
 import json
 
 import threading
+import glob
 
 class ChunkDataCommon():
     def __init__(self, directory:str, chunk_size=16):
@@ -93,8 +94,8 @@ class ChunkDataWriter(ChunkDataCommon):
                 self.current_slice_start = ind_start
 
     def finalize(self):
-        print(f"Finalize: {self.directory} - Length: {self.length}")
-        self.write_conf()
+        with self.lock:
+            self.write_conf()
 
     def get_current_slice_max(self):
         # Return the index of the last element that can
@@ -162,19 +163,27 @@ class ChunkDataWriter(ChunkDataCommon):
 
     def __del__(self):
         with self.lock:
-            self.write_conf()
+            try:
+                # Directory may have been removed by now
+                # because del might be called quite late
+                if os.path.exists(self.directory):
+                    self.write_conf()
+            except Exception as e:
+                traceback.print_tb(e.__traceback__, file=sys.stdout)
 
     def __len__(self):
-        return self.length if self.length >= 0 else 0
+        with self.lock:
+            return self.length if self.length >= 0 else 0
 
     def __getitem__(self, ind):
-        try:
-            print(self.length, self.directory)
-            reader = ChunkDataReader(self)
-        except Exception as e:
-            print(self.length, self.directory)
-            raise IndexError
-        return reader[ind]
+        with self.lock:
+            try:
+                # print(self.length, self.directory)
+                reader = ChunkDataReader(self)
+            except Exception as e:
+                # print(self.length, self.directory)
+                raise IndexError
+            return reader[ind]
 
 
 
@@ -202,20 +211,22 @@ class ChunkDataReader(ChunkDataCommon):
             self.length = length if length > 0 else -1
 
     def __len__(self):
-        return self.length if self.length > 0 else 0
+        with self.lock:
+            return self.length if self.length > 0 else 0
 
 
     def __getitem__(self, ind):
-        if ind >= self.length:
-            raise IndexError
-        if (ind < 0):
-            ind = self.length + ind 
         with self.lock:
-            ind_start = self.get_slice_start_for_index(ind)
-            if ind_start != self.current_slice_start:
-                self.load_slice(ind_start)
-            ind = ind - self.current_slice_start
-            return self.current_slice[ind]
+            if ind >= self.length:
+                raise IndexError
+            if (ind < 0):
+                ind = self.length + ind 
+            with self.lock:
+                ind_start = self.get_slice_start_for_index(ind)
+                if ind_start != self.current_slice_start:
+                    self.load_slice(ind_start)
+                ind = ind - self.current_slice_start
+                return self.current_slice[ind]
 
 
 
