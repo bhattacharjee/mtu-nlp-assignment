@@ -77,6 +77,7 @@ class ChunkDataWriter(ChunkDataCommon):
         # Where does the current slice start from
         self.current_slice_start = -1
 
+        self.__setitem__ = None
 
         if not os.path.exists(self.directory):
             pathlib.Path(self.directory).mkdir(parents=True, exist_ok=False)
@@ -180,11 +181,10 @@ class ChunkDataWriter(ChunkDataCommon):
 
     def __getitem__(self, ind):
         with self.lock:
-
             try:
                 # print(self.length, self.directory)
                 if self.reader is None or self.reader.length <= ind:
-                    self.reader = ChunkDataReader(self)
+                    self.reader = ChunkDataReader(self, lock=self.lock)
             except Exception as e:
                 # print(self.length, self.directory)
                 traceback.print_tb(e.__traceback__, file=sys.stderr)
@@ -193,8 +193,9 @@ class ChunkDataWriter(ChunkDataCommon):
 
 
 
+
 class ChunkDataReader(ChunkDataCommon):
-    def __init__(self, d, chunk_size=16):
+    def __init__(self, d, chunk_size=16, lock=None):
         if isinstance(d, str):
             directory = d
         elif isinstance(d, ChunkDataReader) or isinstance(d, ChunkDataWriter):
@@ -203,7 +204,7 @@ class ChunkDataReader(ChunkDataCommon):
 
         super(self.__class__, self).__init__(directory, chunk_size=chunk_size)
 
-        self.lock = threading.RLock()
+        self.lock = threading.RLock() if lock is None else lock
         self.length = -1
 
         self.current_slice = None

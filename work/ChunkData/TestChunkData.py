@@ -244,6 +244,37 @@ class TestChunkDataWriter(unittest.TestCase):
         self.assertEqual(c[256], 256)
         self.assertEqual(c[512], 512)
 
+    def test_setitem_should_not_work(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        c.append(0)
+        c.append(1)
+        exc_raised = False
+        try:
+            c[0] = 1
+        except:
+            exc_raised = True
+        self.assertTrue(exc_raised, "assignment of element should be rejected")
+
+
+    def test_array_iteration(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        arr = [i for i in range(10)]
+        for i in arr:
+            c.append(i)
+        arr2 = [i for i in c]
+        self.assertTrue(arr == arr2)
+        c = ChunkDataReader(c)
+        arr3 = [i for i in c]
+        self.assertTrue(arr == arr3)
+
 
 
 
