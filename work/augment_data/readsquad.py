@@ -80,7 +80,7 @@ def get_start_end_index(context, replaced):
         if len(replaced) < 4:
             return -1, -1
         try:
-            start_ind = context.index(replaced[len(replaced) // 2])
+            start_ind = context.index(replaced[:len(replaced) // 2])
         except:
             if len(replaced) < 8:
                 return -1, -1
@@ -137,19 +137,20 @@ def main():
     answers = train_dataset['answer']
     j = 0
     for q, c, i, a in zip(questions, contexts, ids, answers):
-        answer = a['text'][0]
-        nc = back_translate_context(c, answer)
-        nq = back_translate(q)
+        if j == 4:
+            answer = a['text'][0]
+            nc = back_translate_context(c, answer)
+            nq = back_translate(q)
 
-        print(c, file=forig)
-        print(q, file=forig)
-        print(answer, file=forig)
-        print("", file=forig)
+            print(c, file=forig)
+            print(q, file=forig)
+            print(answer, file=forig)
+            print("", file=forig)
 
-        print(nc, file=fnew)
-        print(nq, file=fnew)
-        print(answer, file=fnew)
-        print("", file=fnew)
+            print(nc, file=fnew)
+            print(nq, file=fnew)
+            print(answer, file=fnew)
+            print("", file=fnew)
 
         j += 1
         if j > 10: break
