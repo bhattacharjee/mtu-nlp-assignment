@@ -227,6 +227,24 @@ class TestChunkDataWriter(unittest.TestCase):
         self.assertEqual(c.current_slice[1], 1)
 
 
+    def test_getitem_for_writer2(self):
+        if os.path.exists(TestChunkDataWriter.thepathparent):
+            shutil.rmtree(TestChunkDataWriter.thepathparent)
+        c = ChunkDataWriter(\
+                directory=TestChunkDataWriter.thepath,\
+                chunk_size=TestChunkDataWriter.chunk_size)
+        c.append(0)
+        c.append(1)
+        self.assertEqual(c[0], 0)
+        self.assertEqual(c[1], 1)
+        c.append(2)
+        self.assertEqual(c[2], 2)
+        for i in range(3, 513):
+            c.append(i)
+        self.assertEqual(c[256], 256)
+        self.assertEqual(c[512], 512)
+
+
 
 
 if "__main__" == __name__:

@@ -65,6 +65,9 @@ class ChunkDataWriter(ChunkDataCommon):
         super(self.__class__, self).__init__(directory, chunk_size)
         self.lock = threading.RLock()
 
+        # The reader object for __getitem__
+        self.reader = None
+
         # the current slice of the array
         self.current_slice = list()
 
@@ -169,7 +172,7 @@ class ChunkDataWriter(ChunkDataCommon):
                 if os.path.exists(self.directory):
                     self.write_conf()
             except Exception as e:
-                traceback.print_tb(e.__traceback__, file=sys.stdout)
+                traceback.print_tb(e.__traceback__, file=sys.stderr)
 
     def __len__(self):
         with self.lock:
@@ -177,13 +180,16 @@ class ChunkDataWriter(ChunkDataCommon):
 
     def __getitem__(self, ind):
         with self.lock:
+
             try:
                 # print(self.length, self.directory)
-                reader = ChunkDataReader(self)
+                if self.reader is None or self.reader.length <= ind:
+                    self.reader = ChunkDataReader(self)
             except Exception as e:
                 # print(self.length, self.directory)
+                traceback.print_tb(e.__traceback__, file=sys.stderr)
                 raise IndexError
-            return reader[ind]
+            return self.reader[ind]
 
 
 
