@@ -57,6 +57,49 @@ class ChunkDataCommon():
             raise IndexError
 
 
+class ChunkDataReader(ChunkDataCommon):
+    def __init__(self, d, chunk_size=16, lock=None):
+        if isinstance(d, str):
+            directory = d
+        elif isinstance(d, ChunkDataCommon):
+            directory = d.directory
+            chunk_size = d.chunk_size
+
+        super(self.__class__, self).__init__(directory, chunk_size=chunk_size)
+
+        self.lock = threading.RLock() if lock is None else lock
+        self.length = -1
+
+        self.current_slice = None
+        self.current_slice_start = -1
+        self.chunk_size = chunk_size
+        self.directory = directory
+
+        with open(self.get_conf_file_name(), "r") as f:
+            conf = json.load(f)
+            length = conf['length']
+            self.length = length if length > 0 else -1
+
+    def __len__(self):
+        with self.lock:
+            return self.length if self.length > 0 else 0
+
+
+    def __getitem__(self, ind):
+        with self.lock:
+            if ind >= self.length:
+                raise IndexError
+            if (ind < 0):
+                ind = self.length + ind 
+            with self.lock:
+                ind_start = self.get_slice_start_for_index(ind)
+                if ind_start != self.current_slice_start:
+                    self.load_slice(ind_start)
+                ind = ind - self.current_slice_start
+                return self.current_slice[ind]
+
+
+
 class ChunkDataWriter(ChunkDataCommon):
     """Uses pickle, but splits into multiple files.
     behaves like an array and supports the append() method,
@@ -190,50 +233,5 @@ class ChunkDataWriter(ChunkDataCommon):
                 traceback.print_tb(e.__traceback__, file=sys.stderr)
                 raise IndexError
             return self.reader[ind]
-
-
-
-
-class ChunkDataReader(ChunkDataCommon):
-    def __init__(self, d, chunk_size=16, lock=None):
-        if isinstance(d, str):
-            directory = d
-        elif isinstance(d, ChunkDataReader) or isinstance(d, ChunkDataWriter):
-            directory = d.directory
-            chunk_size = d.chunk_size
-
-        super(self.__class__, self).__init__(directory, chunk_size=chunk_size)
-
-        self.lock = threading.RLock() if lock is None else lock
-        self.length = -1
-
-        self.current_slice = None
-        self.current_slice_start = -1
-        self.chunk_size = chunk_size
-        self.directory = directory
-
-        with open(self.get_conf_file_name(), "r") as f:
-            conf = json.load(f)
-            length = conf['length']
-            self.length = length if length > 0 else -1
-
-    def __len__(self):
-        with self.lock:
-            return self.length if self.length > 0 else 0
-
-
-    def __getitem__(self, ind):
-        with self.lock:
-            if ind >= self.length:
-                raise IndexError
-            if (ind < 0):
-                ind = self.length + ind 
-            with self.lock:
-                ind_start = self.get_slice_start_for_index(ind)
-                if ind_start != self.current_slice_start:
-                    self.load_slice(ind_start)
-                ind = ind - self.current_slice_start
-                return self.current_slice[ind]
-
 
 
