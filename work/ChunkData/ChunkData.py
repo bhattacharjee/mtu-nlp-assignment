@@ -33,6 +33,10 @@ class ChunkDataCommon():
     def __init__(self, directory:str, chunk_size=16):
         self.directory = directory
         self.chunk_size = chunk_size
+        self.length = -1
+        self.lock = None
+        self.current_slice = None
+        self.current_slice_start = -1
 
     def get_pickle_file_name(self, st, en):
         return f"{self.directory}/array_chunk-{st:08d}-{en:08d}.pickle"
@@ -55,6 +59,10 @@ class ChunkDataCommon():
             self.current_slice = None
             self.current_slice_start = -1
             raise IndexError
+
+    def __len__(self):
+        with self.lock:
+            return self.length if self.length > 0 else 0
 
 
 class ChunkDataReader(ChunkDataCommon):
@@ -79,11 +87,6 @@ class ChunkDataReader(ChunkDataCommon):
             conf = json.load(f)
             length = conf['length']
             self.length = length if length > 0 else -1
-
-    def __len__(self):
-        with self.lock:
-            return self.length if self.length > 0 else 0
-
 
     def __getitem__(self, ind):
         with self.lock:
@@ -218,10 +221,6 @@ class ChunkDataWriter(ChunkDataCommon):
             except Exception as e:
                 traceback.print_tb(e.__traceback__, file=sys.stderr)
 
-    def __len__(self):
-        with self.lock:
-            return self.length if self.length >= 0 else 0
-
     def __getitem__(self, ind):
         with self.lock:
             try:
@@ -233,5 +232,3 @@ class ChunkDataWriter(ChunkDataCommon):
                 traceback.print_tb(e.__traceback__, file=sys.stderr)
                 raise IndexError
             return self.reader[ind]
-
-
