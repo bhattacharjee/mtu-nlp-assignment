@@ -23,6 +23,10 @@ Report
 The report is present in the following file:
 Rajbir-Bhattacharjee-R00195734-report-nlp-a2.docx
 
+
+
+
+
 Files in folder: baseline
 -------------------------
 Log file:
@@ -36,6 +40,10 @@ baseline/MTU_NLP_Assignment_2_Question_Answering_wip.ipynb
 
 
 
+
+
+
+
 Files in folder: augmentation
 -----------------------------
 Log file:
@@ -44,8 +52,17 @@ augmentation/log_train.txt
 CSV after evaluation on test set:
 augmentation/submission.csv
 
-Jupyter notebook that includes the output from the run
+Jupyter notebook that includes the output from the run (after augmentation and tokenization)
 augmentation/MTU_NLP_Assignment_2_Question_Answering_augmented_wip.ipynb
+
+Jupyter notebook used to perform back-translation and random deletion and swap for augmentation
+augmentation/Augmentation_wip.ipynb
+
+Jupyter notebook used to tokenize the augmented data (it had to be done separately to avoid Colab timeouts)
+augmentation/Augmentation_preprocess_temp.ipynb
+
+
+
 
 
 
@@ -59,6 +76,16 @@ augmentation-with-gradual-unfreezing/MTU_NLP_Assignment_2_QA_augmented_gradual_u
 
 Jupyter notebook that includes the output from the run
 augmentation-with-gradual-unfreezing/submission.csv
+
+Jupyter notebook used to perform back-translation and random deletion and swap for augmentation (identical to the previous one)
+augmentation-with-gradual-unfreezing/Augmentation_wip.ipynb
+
+Jupyter notebook used to tokenize the augmented data (it had to be done separately to avoid Colab timeouts) (identical to the previous one)
+augmentation-with-gradual-unfreezing/Augmentation_preprocess_temp.ipynb
+
+
+
+
 
 
 ChunkData
