@@ -1,0 +1,62 @@
+[12.31.21 09:10:45] Args: {
+    "batch_size": 32,
+    "do_eval": false,
+    "do_train": true,
+    "eval": false,
+    "eval_datasets": "race,relation_extraction,duorc",
+    "eval_dir": "datasets/oodomain_test",
+    "eval_every": 2500,
+    "lr": 3e-05,
+    "num_epochs": 5,
+    "num_visuals": 10,
+    "recompute_features": false,
+    "run_name": "baseline",
+    "save_dir": "save/baseline-01",
+    "seed": 42,
+    "sub_file": "",
+    "train": false,
+    "train_datasets": "squad,nat_questions,newsqa",
+    "train_dir": "datasets/indomain_train",
+    "val_dir": "datasets/indomain_val",
+    "visualize_predictions": false
+}
+[12.31.21 09:10:45] Preparing Training Data...
+[12.31.21 09:10:49] Preparing Validation Data...
+[12.31.21 09:11:08] Epoch: 0
+[12.31.21 09:15:23] Eval F1: 07.53, EM: 00.05
+[12.31.21 09:45:51] Eval F1: 59.27, EM: 43.23
+[12.31.21 10:16:18] Eval F1: 63.09, EM: 47.17
+[12.31.21 10:46:44] Eval F1: 65.45, EM: 49.50
+[12.31.21 11:17:12] Eval F1: 66.30, EM: 50.13
+[12.31.21 11:47:40] Eval F1: 67.12, EM: 51.30
+[12.31.21 12:18:07] Eval F1: 68.42, EM: 52.06
+[12.31.21 12:20:52] Epoch: 1
+[12.31.21 12:48:49] Eval F1: 68.03, EM: 52.64
+[12.31.21 13:19:35] Eval F1: 68.30, EM: 52.32
+[12.31.21 13:50:18] Eval F1: 68.40, EM: 52.59
+[12.31.21 14:21:03] Eval F1: 68.62, EM: 52.92
+[12.31.21 14:51:48] Eval F1: 68.86, EM: 53.33
+[12.31.21 15:22:33] Eval F1: 68.84, EM: 53.19
+[12.31.21 15:28:05] Epoch: 2
+[12.31.21 15:53:14] Eval F1: 69.02, EM: 53.26
+[12.31.21 16:23:57] Eval F1: 68.29, EM: 52.61
+[12.31.21 16:54:39] Eval F1: 68.59, EM: 52.95
+[12.31.21 17:25:20] Eval F1: 68.55, EM: 52.64
+[12.31.21 17:56:00] Eval F1: 68.32, EM: 52.89
+[12.31.21 18:26:40] Eval F1: 69.43, EM: 53.53
+[12.31.21 18:34:57] Epoch: 3
+[12.31.21 18:57:18] Eval F1: 68.87, EM: 53.16
+[12.31.21 19:27:58] Eval F1: 68.84, EM: 52.89
+[12.31.21 19:58:36] Eval F1: 68.47, EM: 52.42
+[12.31.21 20:29:16] Eval F1: 68.41, EM: 52.68
+[12.31.21 20:59:55] Eval F1: 68.35, EM: 52.35
+[12.31.21 21:30:36] Eval F1: 67.80, EM: 51.83
+[12.31.21 21:41:39] Epoch: 4
+[12.31.21 22:01:10] Eval F1: 68.11, EM: 51.90
+[12.31.21 22:31:42] Eval F1: 67.75, EM: 51.63
+[12.31.21 23:02:13] Eval F1: 68.13, EM: 52.02
+[12.31.21 23:32:44] Eval F1: 67.87, EM: 51.71
+[01.01.22 00:03:09] Eval F1: 67.72, EM: 51.61
+[01.01.22 00:33:32] Eval F1: 68.11, EM: 52.04
+[01.01.22 00:51:30] Final eval results after epoch: F1: 68.05, EM: 51.94
+[01.01.22 00:51:30] After epoch, best scores so far: OrderedDict([('F1', 69.42591031886586), ('EM', 53.530306321963934)])
