@@ -1,0 +1,49 @@
+[01.01.22 12:55:48] Epoch: 0
+  0% 0/488383 [00:00<?, ?it/s]
+Iteration:  0 unfreezing from distilbert.transformer.layer.5.attention.q_lin.weight Unfroze 18 layers
+[01.01.22 13:00:05] Eval F1: 07.54, EM: 00.06
+  7% 32000/488383 [08:59<1:06:58, 113.57it/s, NLL=2.06, epoch=0]
+Iteration: 1000 unfreezing from distilbert.transformer.layer.4.attention.q_lin.weight Unfroze 34 layers
+[01.01.22 13:17:43] Eval F1: 41.07, EM: 26.54
+ 26% 128000/488383 [30:34<1:04:54, 92.53it/s, NLL=1.41, epoch=0]
+Iteration: 4000 unfreezing from distilbert.transformer.layer.3.attention.q_lin.weight Unfroze 50 layers
+[01.01.22 13:37:31] Eval F1: 52.52, EM: 36.42
+ 39% 192000/488383 [48:34<1:03:21, 77.97it/s, NLL=1.54, epoch=0]
+Iteration: 6000 unfreezing from distilbert.transformer.layer.2.attention.q_lin.weight Unfroze 66 layers
+[01.01.22 14:00:36] Eval F1: 60.56, EM: 43.99
+ 52% 256000/488383 [1:08:46<57:48, 67.00it/s, NLL=1.21, epoch=0]
+Iteration: 8000 unfreezing from distilbert.transformer.layer.1.attention.q_lin.weight Unfroze 82 layers
+ 66% 320000/488383 [1:26:51<47:26, 59.15it/s, NLL=1.1, epoch=0] 
+Iteration: 10000 unfreezing from distilbert.transformer.layer.0.attention.q_lin.weight Unfroze 98 layers
+[01.01.22 14:26:57] Eval F1: 64.60, EM: 48.34
+ 79% 384000/488383 [1:51:23<33:03, 52.63it/s, NLL=0.957, epoch=0]
+Iteration: 12000 unfreezing all all Unfroze 102 layers
+[01.01.22 14:56:43] Eval F1: 66.22, EM: 49.77
+[01.01.22 15:27:02] Eval F1: 67.90, EM: 51.53
+100% 488383/488383 [2:33:57<00:00, 52.87it/s, NLL=0.768, epoch=0]
+[01.01.22 15:29:46] Epoch: 1
+[01.01.22 15:57:37] Eval F1: 68.29, EM: 52.15
+[01.01.22 16:28:15] Eval F1: 69.08, EM: 52.55
+[01.01.22 16:58:50] Eval F1: 69.41, EM: 53.13
+[01.01.22 17:29:26] Eval F1: 69.75, EM: 53.50
+[01.01.22 18:00:02] Eval F1: 70.31, EM: 53.87
+[01.01.22 18:30:37] Eval F1: 69.98, EM: 54.04
+100% 488383/488383 [3:06:21<00:00, 43.68it/s, NLL=0.944, epoch=1]
+[01.01.22 18:36:07] Epoch: 2
+[01.01.22 19:01:09] Eval F1: 70.46, EM: 54.34
+[01.01.22 19:31:42] Eval F1: 70.74, EM: 54.59
+[01.01.22 20:02:16] Eval F1: 70.20, EM: 54.07
+[01.01.22 20:32:49] Eval F1: 70.64, EM: 54.50
+[01.01.22 21:03:26] Eval F1: 70.69, EM: 54.70
+[01.01.22 21:34:03] Eval F1: 71.30, EM: 54.89
+100% 488383/488383 [3:06:12<00:00, 43.71it/s, NLL=0.755, epoch=2]
+[01.01.22 21:42:20] Epoch: 3
+[01.01.22 22:04:40] Eval F1: 71.29, EM: 54.88
+[01.01.22 22:35:15] Eval F1: 71.29, EM: 55.02
+[01.01.22 23:05:48] Eval F1: 71.26, EM: 55.24
+[01.01.22 23:36:22] Eval F1: 70.89, EM: 54.71
+[01.02.22 00:06:54] Eval F1: 71.54, EM: 54.97
+[01.02.22 00:37:27] Eval F1: 71.43, EM: 55.04
+100% 488383/488383 [3:06:06<00:00, 43.74it/s, NLL=0.236, epoch=3]
+[01.02.22 00:52:44] Final eval results after epoch: F1: 71.63, EM: 55.32
+
